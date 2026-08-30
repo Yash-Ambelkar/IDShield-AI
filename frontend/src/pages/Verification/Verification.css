@@ -1,0 +1,1038 @@
+/* =========================================================
+   VERIFICATION PAGE
+========================================================= */
+
+.verification-page {
+  min-height: 100vh;
+  padding: 70px 6%;
+  background:
+    radial-gradient(
+      circle at 85% 10%,
+      rgba(37, 99, 235, 0.08),
+      transparent 35%
+    ),
+    #f7f9fc;
+
+  color: #172033;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.verification-header {
+  max-width: 1200px;
+  margin: 0 auto 55px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  color: #2563eb;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  letter-spacing: 1.5px;
+
+  margin-bottom: 20px;
+}
+
+.eyebrow span {
+  font-size: 18px;
+}
+
+.verification-header h1 {
+  margin: 0;
+
+  font-size: clamp(42px, 6vw, 76px);
+  line-height: 0.98;
+
+  letter-spacing: -3px;
+
+  font-weight: 800;
+}
+
+.verification-header h1 span {
+  color: #2563eb;
+}
+
+.verification-header p {
+  max-width: 600px;
+
+  margin-top: 25px;
+
+  color: #64748b;
+
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+
+/* =========================================================
+   MAIN CARD
+========================================================= */
+
+.verification-card {
+  max-width: 1200px;
+
+  margin: 0 auto;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 24px;
+
+  padding: clamp(22px, 4vw, 42px);
+
+  box-shadow:
+    0 20px 60px rgba(15, 23, 42, 0.06);
+}
+
+
+/* =========================================================
+   CARD HEADER
+========================================================= */
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  padding-bottom: 30px;
+
+  border-bottom: 1px solid #e8edf4;
+}
+
+.card-header h2 {
+  margin: 0;
+
+  font-size: 25px;
+
+  letter-spacing: -0.5px;
+}
+
+.card-header p {
+  margin: 8px 0 0;
+
+  color: #7b8799;
+
+  font-size: 14px;
+}
+
+.step {
+  color: #2563eb;
+
+  font-size: 13px;
+
+  font-weight: 800;
+
+  letter-spacing: 1px;
+
+  background: #eff6ff;
+
+  padding: 10px 14px;
+
+  border-radius: 10px;
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.verification-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-top: 25px;
+
+  padding: 14px 17px;
+
+  border-radius: 12px;
+
+  background: #fff1f2;
+
+  border: 1px solid #fecdd3;
+
+  color: #be123c;
+}
+
+.verification-error span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;
+  height: 24px;
+
+  border-radius: 50%;
+
+  background: #e11d48;
+
+  color: white;
+
+  font-weight: 800;
+}
+
+.verification-error p {
+  margin: 0;
+
+  font-size: 14px;
+
+  font-weight: 600;
+}
+
+
+/* =========================================================
+   UPLOAD GRID
+========================================================= */
+
+.upload-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 22px;
+
+  margin-top: 30px;
+}
+
+
+/* =========================================================
+   UPLOAD BOX
+========================================================= */
+
+.upload-box {
+  min-width: 0;
+
+  border: 1px solid #dfe6ef;
+
+  border-radius: 18px;
+
+  padding: 24px;
+
+  background: #fbfcfe;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.upload-box:hover {
+  border-color: #b9cdf4;
+
+  box-shadow:
+    0 10px 30px rgba(37, 99, 235, 0.06);
+}
+
+
+/* =========================================================
+   UPLOAD TOP
+========================================================= */
+
+.upload-top {
+  display: flex;
+
+  align-items: center;
+
+  gap: 14px;
+
+  margin-bottom: 22px;
+}
+
+.upload-icon {
+  width: 46px;
+  height: 46px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background: #eaf2ff;
+
+  color: #2563eb;
+
+  font-size: 22px;
+
+  font-weight: 700;
+}
+
+.upload-top h3 {
+  margin: 0;
+
+  font-size: 17px;
+}
+
+.upload-top p {
+  margin: 5px 0 0;
+
+  color: #7b8799;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   UPLOAD OPTIONS
+========================================================= */
+
+.upload-options {
+  min-height: 220px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 12px;
+
+  padding: 25px;
+
+  border: 1.5px dashed #cbd5e1;
+
+  border-radius: 15px;
+
+  background: #ffffff;
+}
+
+.upload-options small {
+  margin-top: 5px;
+
+  color: #94a3b8;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   UPLOAD BUTTON
+========================================================= */
+
+.upload-button,
+.camera-button {
+  width: min(100%, 260px);
+
+  min-height: 48px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 9px;
+
+  border-radius: 11px;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.upload-button {
+  background: #2563eb;
+
+  color: #ffffff;
+
+  border: 1px solid #2563eb;
+}
+
+.upload-button:hover {
+  background: #1d4ed8;
+
+  transform: translateY(-1px);
+}
+
+.upload-button input {
+  display: none;
+}
+
+
+/* =========================================================
+   CAMERA BUTTON
+========================================================= */
+
+.camera-button {
+  background: #ffffff;
+
+  color: #1e293b;
+
+  border: 1px solid #d8e0ea;
+}
+
+.camera-button:hover {
+  border-color: #2563eb;
+
+  color: #2563eb;
+
+  background: #f8fbff;
+}
+
+.camera-button span {
+  font-size: 18px;
+}
+
+
+/* =========================================================
+   FILE PREVIEW
+========================================================= */
+
+.file-preview {
+  overflow: hidden;
+
+  border-radius: 15px;
+
+  border: 1px solid #dbe3ec;
+
+  background: #ffffff;
+}
+
+.file-preview img {
+  display: block;
+
+  width: 100%;
+
+  height: 220px;
+
+  object-fit: contain;
+
+  background: #f1f5f9;
+}
+
+.file-info {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 15px;
+
+  padding: 14px 16px;
+}
+
+.file-info > div {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.file-info strong {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  font-size: 13px;
+}
+
+.file-info span {
+  color: #94a3b8;
+
+  font-size: 11px;
+}
+
+.file-info button {
+  flex-shrink: 0;
+
+  border: none;
+
+  background: #eff6ff;
+
+  color: #2563eb;
+
+  border-radius: 8px;
+
+  padding: 8px 12px;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.file-info button:hover {
+  background: #dbeafe;
+}
+
+
+/* =========================================================
+   PDF PREVIEW
+========================================================= */
+
+.pdf-preview {
+  height: 220px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 12px;
+
+  background: #f8fafc;
+}
+
+.pdf-preview span {
+  padding: 12px 16px;
+
+  border-radius: 10px;
+
+  background: #fee2e2;
+
+  color: #dc2626;
+
+  font-size: 13px;
+
+  font-weight: 800;
+}
+
+.pdf-preview strong {
+  font-size: 14px;
+
+  color: #475569;
+}
+
+
+/* =========================================================
+   ACTION
+========================================================= */
+
+.verification-action {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  gap: 25px;
+
+  margin-top: 30px;
+
+  padding-top: 28px;
+
+  border-top: 1px solid #e5eaf0;
+}
+
+
+/* =========================================================
+   PRIVACY
+========================================================= */
+
+.privacy-note {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.privacy-note > span {
+  font-size: 21px;
+}
+
+.privacy-note strong {
+  display: block;
+
+  font-size: 14px;
+}
+
+.privacy-note p {
+  margin: 5px 0 0;
+
+  color: #8491a5;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   VERIFY BUTTON
+========================================================= */
+
+.verify-button {
+  min-width: 210px;
+
+  min-height: 50px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background: #2563eb;
+
+  color: #ffffff;
+
+  font-size: 14px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.verify-button:hover:not(:disabled) {
+  background: #1d4ed8;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 8px 20px rgba(37, 99, 235, 0.2);
+}
+
+.verify-button:disabled {
+  background: #cbd5e1;
+
+  cursor: not-allowed;
+}
+
+.verify-button > span:last-child {
+  font-size: 19px;
+}
+
+
+/* =========================================================
+   LOADING SPINNER
+========================================================= */
+
+.button-spinner {
+  width: 17px;
+  height: 17px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4);
+
+  border-top-color: #ffffff;
+
+  border-radius: 50%;
+
+  animation: verificationSpin 0.7s linear infinite;
+}
+
+@keyframes verificationSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* =========================================================
+   CAMERA OVERLAY
+========================================================= */
+
+.camera-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.72);
+
+  backdrop-filter: blur(8px);
+}
+
+
+/* =========================================================
+   CAMERA MODAL
+========================================================= */
+
+.camera-modal {
+  width: min(900px, 100%);
+
+  overflow: hidden;
+
+  border-radius: 22px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.3);
+}
+
+
+/* =========================================================
+   CAMERA HEADER
+========================================================= */
+
+.camera-header {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  padding: 22px 25px;
+}
+
+.camera-header span {
+  color: #2563eb;
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  letter-spacing: 1.5px;
+}
+
+.camera-header h2 {
+  margin: 5px 0 0;
+
+  font-size: 22px;
+}
+
+.camera-header button {
+  width: 38px;
+  height: 38px;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: #f1f5f9;
+
+  color: #475569;
+
+  font-size: 25px;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   CAMERA VIEW
+========================================================= */
+
+.camera-view {
+  position: relative;
+
+  width: 100%;
+
+  aspect-ratio: 16 / 9;
+
+  overflow: hidden;
+
+  background: #000;
+}
+
+.camera-view video {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* =========================================================
+   CAMERA FRAMES
+========================================================= */
+
+.document-frame,
+.face-frame {
+  position: absolute;
+
+  left: 50%;
+
+  top: 50%;
+
+  transform: translate(-50%, -50%);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border: 2px solid rgba(255, 255, 255, 0.9);
+
+  border-radius: 15px;
+
+  pointer-events: none;
+
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.3);
+}
+
+.document-frame {
+  width: 75%;
+  aspect-ratio: 1.58 / 1;
+}
+
+.face-frame {
+  width: min(45%, 300px);
+
+  aspect-ratio: 0.78 / 1;
+
+  border-radius: 45%;
+}
+
+.document-frame span,
+.face-frame span {
+  position: absolute;
+
+  bottom: -45px;
+
+  width: max-content;
+
+  max-width: 90vw;
+
+  color: #ffffff;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   CAMERA CONTROLS
+========================================================= */
+
+.camera-controls {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 15px;
+
+  padding: 20px;
+}
+
+.capture-button {
+  min-width: 170px;
+
+  height: 48px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background: #2563eb;
+
+  color: white;
+
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.capture-button:hover {
+  background: #1d4ed8;
+}
+
+.capture-button span {
+  display: inline-block;
+
+  width: 11px;
+  height: 11px;
+
+  margin-right: 8px;
+
+  border-radius: 50%;
+
+  background: white;
+}
+
+.cancel-camera {
+  height: 48px;
+
+  padding: 0 20px;
+
+  border: 1px solid #dbe3ec;
+
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 850px) {
+
+  .verification-page {
+    padding: 50px 4%;
+  }
+
+  .upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .verification-action {
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+  .verify-button {
+    width: 100%;
+  }
+
+  .privacy-note {
+    justify-content: center;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .verification-page {
+    padding: 35px 16px;
+  }
+
+  .verification-header {
+    margin-bottom: 35px;
+  }
+
+  .verification-header h1 {
+    font-size: 48px;
+
+    letter-spacing: -2px;
+  }
+
+  .verification-header p {
+    font-size: 15px;
+  }
+
+  .verification-card {
+    padding: 18px;
+
+    border-radius: 18px;
+  }
+
+  .card-header {
+    align-items: flex-start;
+
+    gap: 15px;
+  }
+
+  .card-header h2 {
+    font-size: 20px;
+  }
+
+  .step {
+    font-size: 10px;
+
+    padding: 8px 10px;
+  }
+
+  .upload-box {
+    padding: 17px;
+  }
+
+  .upload-options {
+    min-height: 190px;
+  }
+
+  .file-preview img {
+    height: 180px;
+  }
+
+  .verification-action {
+    gap: 20px;
+  }
+
+  .privacy-note {
+    justify-content: flex-start;
+  }
+
+  .camera-overlay {
+    padding: 10px;
+  }
+
+  .camera-modal {
+    border-radius: 16px;
+  }
+
+  .camera-header {
+    padding: 17px;
+  }
+
+  .camera-header h2 {
+    font-size: 18px;
+  }
+
+  .camera-view {
+    aspect-ratio: 3 / 4;
+  }
+
+  .document-frame {
+    width: 86%;
+  }
+
+  .face-frame {
+    width: 55%;
+  }
+
+  .camera-controls {
+    flex-direction: column;
+
+    padding: 16px;
+  }
+
+  .capture-button,
+  .cancel-camera {
+    width: 100%;
+  }
+}

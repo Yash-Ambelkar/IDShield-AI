@@ -1,0 +1,95 @@
+{
+    "PASSPORT": {
+        "TESTP123456": {
+            "document_type": "PASSPORT",
+            "document_number": "TESTP123456",
+            "name": "ARJUN SHARMA",
+            "nationality": "INDIAN",
+            "date_of_birth": "15-08-2000",
+            "date_of_expiry": "15-08-2030",
+            "gender": "M",
+            "status": "ACTIVE",
+            "issuing_authority": "DEMO PASSPORT AUTHORITY"
+        },
+
+        "TESTP987654": {
+            "document_type": "PASSPORT",
+            "document_number": "TESTP987654",
+            "name": "RAHUL PATEL",
+            "nationality": "INDIAN",
+            "date_of_birth": "21-04-1998",
+            "date_of_expiry": "21-04-2028",
+            "gender": "M",
+            "status": "ACTIVE",
+            "issuing_authority": "DEMO PASSPORT AUTHORITY"
+        }
+    },
+
+    "DRIVING LICENSE": {
+        "TESTDL123456": {
+            "document_type": "DRIVING LICENSE",
+            "document_number": "TESTDL123456",
+            "name": "PRIYA SHARMA",
+            "nationality": "INDIAN",
+            "date_of_birth": "10-11-2001",
+            "date_of_expiry": "10-11-2031",
+            "gender": "F",
+            "status": "ACTIVE",
+            "issuing_authority": "DEMO TRANSPORT AUTHORITY"
+        },
+
+        "TESTDL987654": {
+            "document_type": "DRIVING LICENSE",
+            "document_number": "TESTDL987654",
+            "name": "AMIT KUMAR",
+            "nationality": "INDIAN",
+            "date_of_birth": "05-06-1995",
+            "date_of_expiry": "05-06-2025",
+            "gender": "M",
+            "status": "EXPIRED",
+            "issuing_authority": "DEMO TRANSPORT AUTHORITY"
+        }
+    },
+
+    "PAN": {
+        "TESTPAN1234": {
+            "document_type": "PAN",
+            "document_number": "TESTPAN1234",
+            "name": "ROHAN MEHTA",
+            "nationality": "INDIAN",
+            "date_of_birth": "12-02-1999",
+            "date_of_expiry": null,
+            "gender": "M",
+            "status": "ACTIVE",
+            "issuing_authority": "DEMO TAX AUTHORITY"
+        }
+    },
+
+    "VOTER ID": {
+        "TESTV123456": {
+            "document_type": "VOTER ID",
+            "document_number": "TESTV123456",
+            "name": "NEHA PATIL",
+            "nationality": "INDIAN",
+            "date_of_birth": "20-07-1997",
+            "date_of_expiry": null,
+            "gender": "F",
+            "status": "ACTIVE",
+            "issuing_authority": "DEMO ELECTION AUTHORITY"
+        }
+    },
+
+    "NATIONAL ID": {
+        "TESTN123456": {
+            "document_type": "NATIONAL ID",
+            "document_number": "TESTN123456",
+            "name": "VIKAS SINGH",
+            "nationality": "INDIAN",
+            "date_of_birth": "08-09-1996",
+            "date_of_expiry": null,
+            "gender": "M",
+            "status": "ACTIVE",
+            "issuing_authority": "DEMO NATIONAL ID AUTHORITY"
+        }
+    }
+}

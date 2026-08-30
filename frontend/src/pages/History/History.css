@@ -1,0 +1,775 @@
+/* =========================================================
+   IDSHIELD AI — HISTORY
+========================================================= */
+
+.history-page {
+  min-height: 100vh;
+
+  padding:
+    65px
+    clamp(20px, 5vw, 80px)
+    70px;
+
+  box-sizing: border-box;
+
+  background:
+    radial-gradient(
+      circle at 85% 5%,
+      rgba(37, 99, 235, 0.07),
+      transparent 28%
+    ),
+    #f7f9fc;
+
+  color: #172033;
+
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.history-header {
+  max-width: 1400px;
+
+  margin: 0 auto 45px;
+
+  display: flex;
+
+  align-items: flex-end;
+
+  justify-content: space-between;
+
+  gap: 30px;
+}
+
+
+.eyebrow {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  margin-bottom: 16px;
+
+  color: #2563eb;
+
+  font-size: 12px;
+
+  font-weight: 800;
+
+  letter-spacing: 1.5px;
+}
+
+
+.history-header h1 {
+  margin: 0;
+
+  font-size:
+    clamp(48px, 6vw, 82px);
+
+  line-height: 0.95;
+
+  letter-spacing: -4px;
+}
+
+
+.history-header h1 span {
+  color: #2563eb;
+}
+
+
+.history-header p {
+  margin: 22px 0 0;
+
+  color: #718096;
+
+  font-size: 15px;
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.history-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+}
+
+
+.new-verification,
+.clear-history {
+  padding: 12px 17px;
+
+  border-radius: 9px;
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.new-verification {
+  border: 1px solid #2563eb;
+
+  background: #2563eb;
+
+  color: #ffffff;
+}
+
+
+.new-verification:hover {
+  background: #1d4ed8;
+}
+
+
+.clear-history {
+  border: 1px solid #fecaca;
+
+  background: #ffffff;
+
+  color: #dc2626;
+}
+
+
+.clear-history:hover {
+  background: #fef2f2;
+}
+
+
+/* =========================================================
+   STATS
+========================================================= */
+
+.history-stats {
+  max-width: 1400px;
+
+  margin: 0 auto 25px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  background: #ffffff;
+
+  border: 1px solid #e1e7ef;
+
+  border-radius: 15px;
+
+  overflow: hidden;
+}
+
+
+.history-stat {
+  padding: 22px 24px;
+
+  border-right: 1px solid #edf1f5;
+}
+
+
+.history-stat:last-child {
+  border-right: none;
+}
+
+
+.history-stat span {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #94a3b8;
+
+  font-size: 9px;
+
+  font-weight: 800;
+
+  letter-spacing: 1px;
+}
+
+
+.history-stat strong {
+  font-size: 27px;
+
+  letter-spacing: -1px;
+}
+
+
+/* =========================================================
+   HISTORY LIST
+========================================================= */
+
+.history-list {
+  max-width: 1400px;
+
+  margin: 0 auto;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 10px;
+}
+
+
+.history-item {
+  position: relative;
+
+  display: grid;
+
+  grid-template-columns:
+    48px
+    minmax(0, 1fr)
+    110px
+    80px
+    35px;
+
+  align-items: center;
+
+  gap: 18px;
+
+  padding: 18px 20px;
+
+  background: #ffffff;
+
+  border: 1px solid #e1e7ef;
+
+  border-radius: 13px;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.history-item:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+
+/* =========================================================
+   LEFT ICON
+========================================================= */
+
+.history-document-icon {
+  width: 45px;
+  height: 45px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background: #eff6ff;
+
+  color: #2563eb;
+
+  font-size: 18px;
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.history-main {
+  min-width: 0;
+}
+
+
+.history-main-top {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+}
+
+
+.history-main h3 {
+  max-width: 450px;
+
+  margin: 0;
+
+  overflow: hidden;
+
+  color: #172033;
+
+  font-size: 14px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.history-main p {
+  margin: 6px 0 2px;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+}
+
+
+.history-main p strong {
+  margin-left: 5px;
+
+  color: #64748b;
+}
+
+
+.history-date {
+  color: #a0aaba;
+
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.history-status {
+  padding: 5px 8px;
+
+  border-radius: 999px;
+
+  font-size: 8px;
+
+  font-weight: 800;
+
+  white-space: nowrap;
+}
+
+
+.history-status.approved {
+  background: #ecfdf3;
+
+  color: #15803d;
+}
+
+
+.history-status.rejected {
+  background: #fef2f2;
+
+  color: #dc2626;
+}
+
+
+.history-status.review {
+  background: #fffbeb;
+
+  color: #d97706;
+}
+
+
+/* =========================================================
+   RISK
+========================================================= */
+
+.history-risk {
+  text-align: center;
+
+  padding-left: 15px;
+
+  border-left: 1px solid #edf1f5;
+}
+
+
+.history-risk span {
+  display: block;
+
+  color: #a0aaba;
+
+  font-size: 8px;
+
+  font-weight: 800;
+
+  letter-spacing: 0.7px;
+}
+
+
+.history-risk strong {
+  display: block;
+
+  margin: 3px 0;
+
+  color: #172033;
+
+  font-size: 20px;
+}
+
+
+.history-risk small {
+  color: #16a34a;
+
+  font-size: 8px;
+
+  font-weight: 800;
+}
+
+
+.history-item.rejected .history-risk small {
+  color: #dc2626;
+}
+
+
+.history-item.review .history-risk small {
+  color: #d97706;
+}
+
+
+/* =========================================================
+   VIEW BUTTON
+========================================================= */
+
+.view-history {
+  border: none;
+
+  background: transparent;
+
+  color: #2563eb;
+
+  font-family: inherit;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.view-history span {
+  margin-left: 4px;
+
+  transition:
+    margin-left 0.2s ease;
+}
+
+
+.view-history:hover span {
+  margin-left: 8px;
+}
+
+
+/* =========================================================
+   DELETE
+========================================================= */
+
+.delete-history {
+  width: 28px;
+  height: 28px;
+
+  border: none;
+
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #a0aaba;
+
+  font-size: 18px;
+
+  cursor: pointer;
+}
+
+
+.delete-history:hover {
+  background: #fef2f2;
+
+  color: #dc2626;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.history-empty {
+  max-width: 700px;
+
+  margin: 60px auto;
+
+  padding: 55px 30px;
+
+  text-align: center;
+
+  background: #ffffff;
+
+  border: 1px solid #e1e7ef;
+
+  border-radius: 18px;
+}
+
+
+.empty-icon {
+  width: 65px;
+  height: 65px;
+
+  margin: 0 auto 18px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 16px;
+
+  background: #eff6ff;
+
+  color: #2563eb;
+
+  font-size: 28px;
+}
+
+
+.history-empty h2 {
+  margin: 0 0 8px;
+
+  font-size: 22px;
+}
+
+
+.history-empty p {
+  margin: 0 auto 22px;
+
+  max-width: 400px;
+
+  color: #8490a3;
+
+  font-size: 13px;
+
+  line-height: 1.6;
+}
+
+
+.history-empty button {
+  padding: 12px 18px;
+
+  border: none;
+
+  border-radius: 9px;
+
+  background: #2563eb;
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+
+  .history-page {
+    padding:
+      45px
+      24px
+      50px;
+  }
+
+
+  .history-header {
+    align-items: flex-start;
+
+    flex-direction: column;
+  }
+
+
+  .history-actions {
+    width: 100%;
+  }
+
+
+  .history-actions button {
+    flex: 1;
+  }
+
+
+  .history-stats {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+
+  .history-stat:nth-child(2) {
+    border-right: none;
+  }
+
+
+  .history-stat:nth-child(-n + 2) {
+    border-bottom: 1px solid #edf1f5;
+  }
+
+
+  .history-item {
+    grid-template-columns:
+      45px
+      minmax(0, 1fr)
+      80px
+      60px;
+  }
+
+
+  .delete-history {
+    display: none;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .history-page {
+    padding:
+      35px
+      16px
+      40px;
+  }
+
+
+  .history-header h1 {
+    font-size: 48px;
+
+    letter-spacing: -2px;
+  }
+
+
+  .history-header p {
+    font-size: 13px;
+  }
+
+
+  .history-actions {
+    flex-direction: column;
+  }
+
+
+  .history-actions button {
+    width: 100%;
+  }
+
+
+  .history-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+
+  .history-stat {
+    padding: 17px;
+  }
+
+
+  .history-stat strong {
+    font-size: 23px;
+  }
+
+
+  .history-item {
+    grid-template-columns:
+      40px
+      minmax(0, 1fr);
+
+    gap: 12px;
+
+    padding: 15px;
+  }
+
+
+  .history-document-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+
+  .history-risk {
+    grid-column: 2;
+
+    width: fit-content;
+
+    padding-left: 0;
+
+    text-align: left;
+
+    border-left: none;
+  }
+
+
+  .view-history {
+    grid-column: 2;
+
+    width: fit-content;
+
+    padding: 8px 0;
+  }
+
+
+  .history-main-top {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 6px;
+  }
+
+
+  .history-main h3 {
+    max-width: 100%;
+  }
+
+}
+
+
+/* =========================================================
+   VERY SMALL
+========================================================= */
+
+@media (max-width: 380px) {
+
+  .history-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+
+  .history-header h1 {
+    font-size: 42px;
+  }
+
+}

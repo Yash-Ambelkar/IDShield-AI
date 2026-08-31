@@ -50,6 +50,7 @@ os.makedirs(
 # ==========================================================
 
 if AI_DIR not in sys.path:
+
     sys.path.insert(
         0,
         AI_DIR
@@ -78,7 +79,7 @@ app = FastAPI(
 
 
 # ==========================================================
-# CORS
+# CORS CONFIGURATION
 # ==========================================================
 
 app.add_middleware(
@@ -94,7 +95,9 @@ app.add_middleware(
     ],
 
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
 
@@ -103,9 +106,13 @@ app.add_middleware(
 # SERVE UPLOADED FILES
 # ==========================================================
 #
+# Uploaded files can be accessed through:
+#
+# /files/{verification_id}/{filename}
+#
 # Example:
 #
-# https://idshield-ai-backend.onrender.com/files/ID-ABC12345/file.png
+# /files/ID-ABC12345/file.png
 #
 # ==========================================================
 
@@ -119,7 +126,7 @@ app.mount(
 
 
 # ==========================================================
-# ROOT
+# ROOT ENDPOINT
 # ==========================================================
 
 @app.get("/")
@@ -267,8 +274,12 @@ async def verify_document(
 
             return {
                 "success": False,
-                "verification_id": verification_id,
-                "message": "Identity document is required."
+
+                "verification_id":
+                    verification_id,
+
+                "message":
+                    "Identity document is required."
             }
 
 
@@ -301,8 +312,13 @@ async def verify_document(
         # ==================================================
 
         print("\n")
+
         print("=" * 60)
-        print("IDSHIELD AI - NEW VERIFICATION")
+
+        print(
+            "IDSHIELD AI - NEW VERIFICATION"
+        )
+
         print("=" * 60)
 
         print(
@@ -343,7 +359,7 @@ async def verify_document(
 
 
         # ==================================================
-        # RUN COMPLETE AI PIPELINE
+        # RUN IDSHIELD AI PIPELINE
         # ==================================================
 
         print("\n")
@@ -352,6 +368,38 @@ async def verify_document(
             "🚀 Starting IDShield AI pipeline..."
         )
 
+        print(
+            "Pipeline stages:"
+        )
+
+        print(
+            "  1. OCR"
+        )
+
+        print(
+            "  2. Document Validation"
+        )
+
+        print(
+            "  3. Authenticity Verification"
+        )
+
+        print(
+            "  4. Tampering Detection"
+        )
+
+        print(
+            "  5. Face Verification"
+        )
+
+        print(
+            "  6. Risk Engine"
+        )
+
+
+        # ==================================================
+        # EXECUTE PIPELINE
+        # ==================================================
 
         result = run_pipeline(
             document_path,
@@ -370,9 +418,14 @@ async def verify_document(
             )
 
             return {
+
                 "success": False,
-                "verification_id": verification_id,
-                "message": "Verification pipeline failed."
+
+                "verification_id":
+                    verification_id,
+
+                "message":
+                    "Verification pipeline failed."
             }
 
 
@@ -380,23 +433,35 @@ async def verify_document(
         # PIPELINE ERROR
         # ==================================================
 
-        if isinstance(result, dict):
+        if isinstance(
+            result,
+            dict
+        ):
 
-            if result.get("status") == "ERROR":
+            if result.get(
+                "status"
+            ) == "ERROR":
 
                 return {
+
                     "success": False,
-                    "verification_id": verification_id,
-                    "result": result,
-                    "message": result.get(
-                        "message",
-                        "Pipeline error."
-                    )
+
+                    "verification_id":
+                        verification_id,
+
+                    "result":
+                        result,
+
+                    "message":
+                        result.get(
+                            "message",
+                            "Pipeline error."
+                        )
                 }
 
 
         # ==================================================
-        # CREATE FILE URLS
+        # CREATE DOCUMENT FILE URL
         # ==================================================
 
         document_filename = os.path.basename(
@@ -409,6 +474,10 @@ async def verify_document(
             f"{document_filename}"
         )
 
+
+        # ==================================================
+        # CREATE SELFIE FILE URL
+        # ==================================================
 
         selfie_url = None
 
@@ -440,14 +509,19 @@ async def verify_document(
         print("=" * 60)
 
         print(
-            f"Document URL : "
+            f"Verification ID : "
+            f"{verification_id}"
+        )
+
+        print(
+            f"Document URL    : "
             f"{document_url}"
         )
 
         if selfie_url:
 
             print(
-                f"Selfie URL   : "
+                f"Selfie URL      : "
                 f"{selfie_url}"
             )
 
@@ -468,7 +542,10 @@ async def verify_document(
 
             "files": {
 
+                # ------------------------------------------
                 # Original filenames
+                # ------------------------------------------
+
                 "document":
                     document.filename,
 
@@ -477,7 +554,11 @@ async def verify_document(
                     if selfie
                     else None,
 
+
+                # ------------------------------------------
                 # Browser-accessible URLs
+                # ------------------------------------------
+
                 "document_url":
                     document_url,
 
@@ -506,8 +587,17 @@ async def verify_document(
         print("=" * 60)
 
         print(
-            str(e)
+            f"Verification ID : "
+            f"{verification_id}"
         )
+
+        print(
+            f"Error           : "
+            f"{str(e)}"
+        )
+
+        print("=" * 60)
+
 
         return {
 
@@ -548,6 +638,30 @@ print(
 
 print(
     "Selfie: OPTIONAL"
+)
+
+print(
+    "OCR: ENABLED"
+)
+
+print(
+    "Validation: ENABLED"
+)
+
+print(
+    "Authenticity: ENABLED"
+)
+
+print(
+    "Tampering Detection: ENABLED"
+)
+
+print(
+    "Face Verification: PIPELINE CONTROLLED"
+)
+
+print(
+    "Risk Engine: ENABLED"
 )
 
 print(

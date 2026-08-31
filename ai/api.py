@@ -9,7 +9,7 @@
 #
 #   Frontend
 #      ↓
-#   POST /api/verify
+#   POST /verify
 #      ↓
 #   Save uploaded document + selfie
 #      ↓
@@ -52,7 +52,6 @@ BASE_DIR = os.path.dirname(
 
 # Make sure ai/ is available for imports
 if BASE_DIR not in sys.path:
-
     sys.path.insert(
         0,
         BASE_DIR
@@ -132,15 +131,16 @@ app = FastAPI(
 # CORS
 # ==========================================================
 #
-# During development we allow the frontend to communicate
-# with this API.
+# Allows:
 #
-# Later, when deployed, replace "*" with your real frontend
-# URL.
+#   Local Vite frontend
+#   Vercel frontend
 #
-# Example:
+# We use "*" temporarily so deployment/testing does not
+# fail because of an incorrect frontend domain.
 #
-# https://idshield-ai.vercel.app
+# allow_credentials is False because we are not using
+# cookie-based authentication for this API request.
 #
 # ==========================================================
 
@@ -166,7 +166,7 @@ app.add_middleware(
 
 
 # ==========================================================
-# HEALTH CHECK
+# ROOT ENDPOINT
 # ==========================================================
 
 @app.get("/")
@@ -231,7 +231,6 @@ async def save_uploaded_file(
                 )
 
                 if not chunk:
-
                     break
 
                 file.write(
@@ -267,7 +266,6 @@ def remove_file(
 ):
 
     if not file_path:
-
         return
 
     try:
@@ -296,7 +294,6 @@ def remove_directory(
 ):
 
     if not directory:
-
         return
 
     try:
@@ -326,7 +323,7 @@ def normalize_result(
 ):
 
     """
-    Make sure the API always returns a predictable object.
+    Make sure the API always returns a dictionary.
     """
 
     if not isinstance(
@@ -363,15 +360,14 @@ def normalize_result(
 
 
 # ==========================================================
-# VERIFY DOCUMENT
+# MAIN VERIFICATION FUNCTION
 # ==========================================================
 
-@app.post("/api/verify")
-async def verify_document(
+async def process_verification(
 
-    document: UploadFile = File(...),
+    document: UploadFile,
 
-    selfie: UploadFile = File(...)
+    selfie: UploadFile
 
 ):
 
@@ -390,7 +386,7 @@ async def verify_document(
 
 
     # ======================================================
-    # VALIDATE DOCUMENT FILE
+    # VALIDATE DOCUMENT
     # ======================================================
 
     if not document:
@@ -405,7 +401,7 @@ async def verify_document(
 
 
     # ======================================================
-    # VALIDATE SELFIE FILE
+    # VALIDATE SELFIE
     # ======================================================
 
     if not selfie:
@@ -420,13 +416,14 @@ async def verify_document(
 
 
     # ======================================================
-    # VALIDATE FILE NAMES
+    # FILE NAMES
     # ======================================================
 
     document_name = (
         document.filename
         or "document.jpg"
     )
+
 
     selfie_name = (
         selfie.filename
@@ -455,22 +452,6 @@ async def verify_document(
     # ======================================================
     # CREATE UNIQUE REQUEST DIRECTORY
     # ======================================================
-    #
-    # Every verification gets its own directory.
-    #
-    # Example:
-    #
-    # api_uploads/
-    #     9f3a2.../
-    #         document.jpg
-    #         selfie.jpg
-    #         document_face_crop.jpg
-    #         document_face_verification.jpg
-    #
-    # This prevents multiple requests from overwriting
-    # each other's files.
-    #
-    # ======================================================
 
     request_id = str(
         uuid.uuid4()
@@ -496,7 +477,7 @@ async def verify_document(
 
 
     # ======================================================
-    # CREATE FILE PATHS
+    # FILE EXTENSIONS
     # ======================================================
 
     document_extension = os.path.splitext(
@@ -509,9 +490,7 @@ async def verify_document(
     )[1].lower()
 
 
-    # ------------------------------------------------------
     # Default extensions
-    # ------------------------------------------------------
 
     if not document_extension:
 
@@ -522,6 +501,10 @@ async def verify_document(
 
         selfie_extension = ".jpg"
 
+
+    # ======================================================
+    # FILE PATHS
+    # ======================================================
 
     document_path = os.path.join(
 
@@ -575,6 +558,7 @@ async def verify_document(
         remove_directory(
             request_directory
         )
+
 
         print(
             "\n❌ Failed to save document:"
@@ -631,6 +615,7 @@ async def verify_document(
         remove_directory(
             request_directory
         )
+
 
         print(
             "\n❌ Failed to save selfie:"
@@ -719,9 +704,7 @@ async def verify_document(
                     False,
 
                 "message":
-                    (
-                        "IDShield AI pipeline failed."
-                    ),
+                    "IDShield AI pipeline failed.",
 
                 "error":
                     str(e)
@@ -765,7 +748,7 @@ async def verify_document(
 
 
     # ======================================================
-    # DISPLAY FINAL API RESULT
+    # DISPLAY FINAL RESULT
     # ======================================================
 
     print(
@@ -835,23 +818,66 @@ async def verify_document(
 
 
     # ======================================================
-    # IMPORTANT
+    # RETURN RESULT
     # ======================================================
-    #
-    # For LOCAL TESTING we keep the request directory so
-    # generated portrait files can be inspected.
-    #
-    # Later, before production deployment, we should change
-    # this to automatic cleanup or object storage.
-    #
-    # ======================================================
-
 
     return result
 
 
 # ==========================================================
-# OPTIONAL DEVELOPMENT ENDPOINT
+# VERIFICATION ENDPOINT
+# ==========================================================
+#
+# Primary production endpoint:
+#
+# POST /verify
+#
+# ==========================================================
+
+@app.post("/verify")
+async def verify_document(
+
+    document: UploadFile = File(...),
+
+    selfie: UploadFile = File(...)
+
+):
+
+    return await process_verification(
+        document,
+        selfie
+    )
+
+
+# ==========================================================
+# BACKWARD COMPATIBILITY ENDPOINT
+# ==========================================================
+#
+# Also support:
+#
+# POST /api/verify
+#
+# This prevents older frontend versions from breaking.
+#
+# ==========================================================
+
+@app.post("/api/verify")
+async def verify_document_api(
+
+    document: UploadFile = File(...),
+
+    selfie: UploadFile = File(...)
+
+):
+
+    return await process_verification(
+        document,
+        selfie
+    )
+
+
+# ==========================================================
+# API INFORMATION
 # ==========================================================
 
 @app.get("/api")
@@ -871,6 +897,9 @@ def api_info():
                 "/api/health",
 
             "verify":
+                "/verify",
+
+            "verify_legacy":
                 "/api/verify"
 
         }
@@ -885,6 +914,17 @@ def api_info():
 if __name__ == "__main__":
 
     import uvicorn
+
+
+    # Railway provides PORT through environment variable.
+    # Locally it defaults to 8000.
+
+    port = int(
+        os.environ.get(
+            "PORT",
+            8000
+        )
+    )
 
 
     print(
@@ -914,7 +954,7 @@ if __name__ == "__main__":
     )
 
     print(
-        "http://127.0.0.1:8000"
+        f"http://127.0.0.1:{port}"
     )
 
 
@@ -923,7 +963,7 @@ if __name__ == "__main__":
     )
 
     print(
-        "http://127.0.0.1:8000/docs"
+        f"http://127.0.0.1:{port}/docs"
     )
 
 
@@ -932,7 +972,16 @@ if __name__ == "__main__":
     )
 
     print(
-        "http://127.0.0.1:8000/api/health"
+        f"http://127.0.0.1:{port}/api/health"
+    )
+
+
+    print(
+        "\nVerification:"
+    )
+
+    print(
+        f"http://127.0.0.1:{port}/verify"
     )
 
 
@@ -947,6 +996,6 @@ if __name__ == "__main__":
 
         host="0.0.0.0",
 
-        port=8000
+        port=port
 
     )

@@ -249,12 +249,12 @@ function Verification() {
       // --------------------------------------------------
 
       const response = await fetch(
-        "http://127.0.0.1:8000/verify",
-        {
-          method: "POST",
-          body: formData
-        }
-      );
+    "https://idshield-ai-backend.onrender.com/verify",
+    {
+        method: "POST",
+        body: formData
+    }
+);
 
       // --------------------------------------------------
       // READ RESPONSE

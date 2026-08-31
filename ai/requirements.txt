@@ -1,0 +1,31 @@
+# ==========================================================
+# IDShield AI - Backend Dependencies
+# ==========================================================
+
+# API
+fastapi
+uvicorn
+python-multipart
+
+# Image processing
+opencv-python
+numpy
+Pillow
+
+# OCR
+paddleocr
+paddlepaddle
+
+# Face detection / verification
+deepface
+retina-face
+
+# Face recognition dependencies
+tensorflow
+tf-keras
+
+# Data processing
+pandas
+
+# Environment configuration
+python-dotenv

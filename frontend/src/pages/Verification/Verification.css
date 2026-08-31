@@ -1,1038 +1,470 @@
-/* =========================================================
-   VERIFICATION PAGE
-========================================================= */
+/* ==========================================================
+   IDShield AI - Verification Page
+   ========================================================== */
 
 .verification-page {
-  min-height: 100vh;
-  padding: 70px 6%;
-  background:
-    radial-gradient(
-      circle at 85% 10%,
-      rgba(37, 99, 235, 0.08),
-      transparent 35%
-    ),
-    #f7f9fc;
-
-  color: #172033;
+    min-height: 100vh;
+    width: 100%;
+    padding: 40px 20px 70px;
+    background:
+        radial-gradient(
+            circle at top left,
+            rgba(37, 99, 235, 0.08),
+            transparent 35%
+        ),
+        #f8fafc;
+    color: #0f172a;
+    box-sizing: border-box;
 }
 
 
-/* =========================================================
+/* ==========================================================
+   CONTAINER
+   ========================================================== */
+
+.verification-container {
+    width: 100%;
+    max-width: 1050px;
+    margin: 0 auto;
+}
+
+
+/* ==========================================================
    HEADER
-========================================================= */
+   ========================================================== */
 
 .verification-header {
-  max-width: 1200px;
-  margin: 0 auto 55px;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-
-  color: #2563eb;
-
-  font-size: 13px;
-  font-weight: 800;
-
-  letter-spacing: 1.5px;
-
-  margin-bottom: 20px;
-}
-
-.eyebrow span {
-  font-size: 18px;
+    text-align: center;
+    margin-bottom: 38px;
 }
 
 .verification-header h1 {
-  margin: 0;
-
-  font-size: clamp(42px, 6vw, 76px);
-  line-height: 0.98;
-
-  letter-spacing: -3px;
-
-  font-weight: 800;
-}
-
-.verification-header h1 span {
-  color: #2563eb;
+    margin: 0;
+    font-size: clamp(30px, 5vw, 46px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    color: #0f172a;
 }
 
 .verification-header p {
-  max-width: 600px;
-
-  margin-top: 25px;
-
-  color: #64748b;
-
-  font-size: 17px;
-  line-height: 1.7;
+    margin: 10px auto 0;
+    max-width: 650px;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #64748b;
 }
 
 
-/* =========================================================
+/* ==========================================================
    MAIN CARD
-========================================================= */
+   ========================================================== */
 
 .verification-card {
-  max-width: 1200px;
-
-  margin: 0 auto;
-
-  background: #ffffff;
-
-  border: 1px solid #e2e8f0;
-
-  border-radius: 24px;
-
-  padding: clamp(22px, 4vw, 42px);
-
-  box-shadow:
-    0 20px 60px rgba(15, 23, 42, 0.06);
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 22px;
+    padding: 32px;
+    box-sizing: border-box;
+    box-shadow:
+        0 10px 35px rgba(15, 23, 42, 0.07);
 }
 
 
-/* =========================================================
-   CARD HEADER
-========================================================= */
+/* ==========================================================
+   SECTION
+   ========================================================== */
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-
-  padding-bottom: 30px;
-
-  border-bottom: 1px solid #e8edf4;
+.verification-section {
+    margin-bottom: 30px;
 }
 
-.card-header h2 {
-  margin: 0;
-
-  font-size: 25px;
-
-  letter-spacing: -0.5px;
+.verification-section:last-child {
+    margin-bottom: 0;
 }
 
-.card-header p {
-  margin: 8px 0 0;
-
-  color: #7b8799;
-
-  font-size: 14px;
+.verification-section h2 {
+    margin: 0 0 8px;
+    font-size: 21px;
+    font-weight: 750;
+    color: #0f172a;
 }
 
-.step {
-  color: #2563eb;
-
-  font-size: 13px;
-
-  font-weight: 800;
-
-  letter-spacing: 1px;
-
-  background: #eff6ff;
-
-  padding: 10px 14px;
-
-  border-radius: 10px;
+.verification-section > p {
+    margin: 0 0 18px;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
 }
 
 
-/* =========================================================
-   ERROR
-========================================================= */
-
-.verification-error {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  margin-top: 25px;
-
-  padding: 14px 17px;
-
-  border-radius: 12px;
-
-  background: #fff1f2;
-
-  border: 1px solid #fecdd3;
-
-  color: #be123c;
-}
-
-.verification-error span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 24px;
-  height: 24px;
-
-  border-radius: 50%;
-
-  background: #e11d48;
-
-  color: white;
-
-  font-weight: 800;
-}
-
-.verification-error p {
-  margin: 0;
-
-  font-size: 14px;
-
-  font-weight: 600;
-}
-
-
-/* =========================================================
+/* ==========================================================
    UPLOAD GRID
-========================================================= */
+   ========================================================== */
 
 .upload-grid {
-  display: grid;
-
-  grid-template-columns:
-    repeat(2, minmax(0, 1fr));
-
-  gap: 22px;
-
-  margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
 }
 
 
-/* =========================================================
+/* ==========================================================
    UPLOAD BOX
-========================================================= */
+   ========================================================== */
 
 .upload-box {
-  min-width: 0;
-
-  border: 1px solid #dfe6ef;
-
-  border-radius: 18px;
-
-  padding: 24px;
-
-  background: #fbfcfe;
-
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    position: relative;
+    min-height: 230px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 18px;
+    background: #f8fafc;
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease;
+    overflow: hidden;
 }
 
 .upload-box:hover {
-  border-color: #b9cdf4;
-
-  box-shadow:
-    0 10px 30px rgba(37, 99, 235, 0.06);
+    border-color: #2563eb;
+    background: #eff6ff;
+    transform: translateY(-2px);
 }
 
 
-/* =========================================================
-   UPLOAD TOP
-========================================================= */
+/* ==========================================================
+   HIDDEN INPUT
+   ========================================================== */
 
-.upload-top {
-  display: flex;
+.upload-box input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
 
-  align-items: center;
 
-  gap: 14px;
+/* ==========================================================
+   UPLOAD CONTENT
+   ========================================================== */
 
-  margin-bottom: 22px;
+.upload-content {
+    min-height: 230px;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
 }
 
 .upload-icon {
-  width: 46px;
-  height: 46px;
-
-  flex-shrink: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 12px;
-
-  background: #eaf2ff;
-
-  color: #2563eb;
-
-  font-size: 22px;
-
-  font-weight: 700;
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 27px;
 }
 
-.upload-top h3 {
-  margin: 0;
-
-  font-size: 17px;
+.upload-content h3 {
+    margin: 0 0 7px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
 }
 
-.upload-top p {
-  margin: 5px 0 0;
-
-  color: #7b8799;
-
-  font-size: 13px;
+.upload-content p {
+    margin: 0;
+    max-width: 280px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #64748b;
 }
 
 
-/* =========================================================
-   UPLOAD OPTIONS
-========================================================= */
+/* ==========================================================
+   SELECTED FILE
+   ========================================================== */
 
-.upload-options {
-  min-height: 220px;
-
-  display: flex;
-
-  flex-direction: column;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 12px;
-
-  padding: 25px;
-
-  border: 1.5px dashed #cbd5e1;
-
-  border-radius: 15px;
-
-  background: #ffffff;
-}
-
-.upload-options small {
-  margin-top: 5px;
-
-  color: #94a3b8;
-
-  font-size: 12px;
+.file-selected {
+    margin-top: 15px;
+    padding: 9px 13px;
+    border-radius: 10px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 12px;
+    font-weight: 650;
+    word-break: break-word;
+    max-width: 90%;
 }
 
 
-/* =========================================================
-   UPLOAD BUTTON
-========================================================= */
+/* ==========================================================
+   PREVIEW
+   ========================================================== */
 
-.upload-button,
-.camera-button {
-  width: min(100%, 260px);
-
-  min-height: 48px;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 9px;
-
-  border-radius: 11px;
-
-  font-size: 14px;
-
-  font-weight: 700;
-
-  cursor: pointer;
-
-  transition: 0.2s ease;
-}
-
-.upload-button {
-  background: #2563eb;
-
-  color: #ffffff;
-
-  border: 1px solid #2563eb;
-}
-
-.upload-button:hover {
-  background: #1d4ed8;
-
-  transform: translateY(-1px);
-}
-
-.upload-button input {
-  display: none;
+.upload-preview {
+    width: 100%;
+    height: 230px;
+    object-fit: contain;
+    display: block;
+    background: #f1f5f9;
 }
 
 
-/* =========================================================
-   CAMERA BUTTON
-========================================================= */
+/* ==========================================================
+   DOCUMENT / SELFIE LABEL
+   ========================================================== */
 
-.camera-button {
-  background: #ffffff;
-
-  color: #1e293b;
-
-  border: 1px solid #d8e0ea;
-}
-
-.camera-button:hover {
-  border-color: #2563eb;
-
-  color: #2563eb;
-
-  background: #f8fbff;
-}
-
-.camera-button span {
-  font-size: 18px;
+.upload-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 15px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 
-/* =========================================================
-   FILE PREVIEW
-========================================================= */
-
-.file-preview {
-  overflow: hidden;
-
-  border-radius: 15px;
-
-  border: 1px solid #dbe3ec;
-
-  background: #ffffff;
-}
-
-.file-preview img {
-  display: block;
-
-  width: 100%;
-
-  height: 220px;
-
-  object-fit: contain;
-
-  background: #f1f5f9;
-}
-
-.file-info {
-  display: flex;
-
-  align-items: center;
-
-  justify-content: space-between;
-
-  gap: 15px;
-
-  padding: 14px 16px;
-}
-
-.file-info > div {
-  min-width: 0;
-
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 4px;
-}
-
-.file-info strong {
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-
-  white-space: nowrap;
-
-  font-size: 13px;
-}
-
-.file-info span {
-  color: #94a3b8;
-
-  font-size: 11px;
-}
-
-.file-info button {
-  flex-shrink: 0;
-
-  border: none;
-
-  background: #eff6ff;
-
-  color: #2563eb;
-
-  border-radius: 8px;
-
-  padding: 8px 12px;
-
-  font-size: 12px;
-
-  font-weight: 700;
-
-  cursor: pointer;
-}
-
-.file-info button:hover {
-  background: #dbeafe;
-}
-
-
-/* =========================================================
-   PDF PREVIEW
-========================================================= */
-
-.pdf-preview {
-  height: 220px;
-
-  display: flex;
-
-  flex-direction: column;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 12px;
-
-  background: #f8fafc;
-}
-
-.pdf-preview span {
-  padding: 12px 16px;
-
-  border-radius: 10px;
-
-  background: #fee2e2;
-
-  color: #dc2626;
-
-  font-size: 13px;
-
-  font-weight: 800;
-}
-
-.pdf-preview strong {
-  font-size: 14px;
-
-  color: #475569;
-}
-
-
-/* =========================================================
-   ACTION
-========================================================= */
-
-.verification-action {
-  display: flex;
-
-  justify-content: space-between;
-
-  align-items: center;
-
-  gap: 25px;
-
-  margin-top: 30px;
-
-  padding-top: 28px;
-
-  border-top: 1px solid #e5eaf0;
-}
-
-
-/* =========================================================
-   PRIVACY
-========================================================= */
-
-.privacy-note {
-  display: flex;
-
-  align-items: center;
-
-  gap: 12px;
-}
-
-.privacy-note > span {
-  font-size: 21px;
-}
-
-.privacy-note strong {
-  display: block;
-
-  font-size: 14px;
-}
-
-.privacy-note p {
-  margin: 5px 0 0;
-
-  color: #8491a5;
-
-  font-size: 12px;
-}
-
-
-/* =========================================================
+/* ==========================================================
    VERIFY BUTTON
-========================================================= */
+   ========================================================== */
 
 .verify-button {
-  min-width: 210px;
-
-  min-height: 50px;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 10px;
-
-  border: none;
-
-  border-radius: 12px;
-
-  background: #2563eb;
-
-  color: #ffffff;
-
-  font-size: 14px;
-
-  font-weight: 800;
-
-  cursor: pointer;
-
-  transition: 0.2s ease;
+    width: 100%;
+    min-height: 56px;
+    margin-top: 28px;
+    border: none;
+    border-radius: 14px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 750;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+    box-shadow:
+        0 8px 20px rgba(37, 99, 235, 0.20);
 }
 
-.verify-button:hover:not(:disabled) {
-  background: #1d4ed8;
+.verify-button:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow:
+        0 12px 25px rgba(37, 99, 235, 0.25);
+}
 
-  transform: translateY(-1px);
-
-  box-shadow:
-    0 8px 20px rgba(37, 99, 235, 0.2);
+.verify-button:active {
+    transform: translateY(0);
 }
 
 .verify-button:disabled {
-  background: #cbd5e1;
-
-  cursor: not-allowed;
-}
-
-.verify-button > span:last-child {
-  font-size: 19px;
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 
-/* =========================================================
-   LOADING SPINNER
-========================================================= */
-
-.button-spinner {
-  width: 17px;
-  height: 17px;
-
-  border: 2px solid rgba(255, 255, 255, 0.4);
-
-  border-top-color: #ffffff;
-
-  border-radius: 50%;
-
-  animation: verificationSpin 0.7s linear infinite;
-}
-
-@keyframes verificationSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-
-/* =========================================================
-   CAMERA OVERLAY
-========================================================= */
-
-.camera-overlay {
-  position: fixed;
-
-  inset: 0;
-
-  z-index: 9999;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  padding: 20px;
-
-  background: rgba(15, 23, 42, 0.72);
-
-  backdrop-filter: blur(8px);
-}
-
-
-/* =========================================================
-   CAMERA MODAL
-========================================================= */
-
-.camera-modal {
-  width: min(900px, 100%);
-
-  overflow: hidden;
-
-  border-radius: 22px;
-
-  background: #ffffff;
-
-  box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.3);
-}
-
-
-/* =========================================================
-   CAMERA HEADER
-========================================================= */
-
-.camera-header {
-  display: flex;
-
-  justify-content: space-between;
-
-  align-items: center;
-
-  padding: 22px 25px;
-}
-
-.camera-header span {
-  color: #2563eb;
-
-  font-size: 11px;
-
-  font-weight: 800;
-
-  letter-spacing: 1.5px;
-}
-
-.camera-header h2 {
-  margin: 5px 0 0;
-
-  font-size: 22px;
-}
-
-.camera-header button {
-  width: 38px;
-  height: 38px;
-
-  border: none;
-
-  border-radius: 50%;
-
-  background: #f1f5f9;
-
-  color: #475569;
-
-  font-size: 25px;
-
-  cursor: pointer;
-}
-
-
-/* =========================================================
-   CAMERA VIEW
-========================================================= */
-
-.camera-view {
-  position: relative;
-
-  width: 100%;
-
-  aspect-ratio: 16 / 9;
-
-  overflow: hidden;
-
-  background: #000;
-}
-
-.camera-view video {
-  width: 100%;
-  height: 100%;
-
-  display: block;
-
-  object-fit: cover;
-}
-
-
-/* =========================================================
-   CAMERA FRAMES
-========================================================= */
-
-.document-frame,
-.face-frame {
-  position: absolute;
-
-  left: 50%;
-
-  top: 50%;
-
-  transform: translate(-50%, -50%);
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  border: 2px solid rgba(255, 255, 255, 0.9);
-
-  border-radius: 15px;
-
-  pointer-events: none;
-
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.3);
-}
-
-.document-frame {
-  width: 75%;
-  aspect-ratio: 1.58 / 1;
-}
-
-.face-frame {
-  width: min(45%, 300px);
-
-  aspect-ratio: 0.78 / 1;
-
-  border-radius: 45%;
-}
-
-.document-frame span,
-.face-frame span {
-  position: absolute;
-
-  bottom: -45px;
-
-  width: max-content;
-
-  max-width: 90vw;
-
-  color: #ffffff;
-
-  font-size: 13px;
-
-  font-weight: 600;
-
-  text-align: center;
-}
-
-
-/* =========================================================
-   CAMERA CONTROLS
-========================================================= */
-
-.camera-controls {
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 15px;
-
-  padding: 20px;
-}
-
-.capture-button {
-  min-width: 170px;
-
-  height: 48px;
-
-  border: none;
-
-  border-radius: 12px;
-
-  background: #2563eb;
-
-  color: white;
-
-  font-weight: 800;
-
-  cursor: pointer;
-}
-
-.capture-button:hover {
-  background: #1d4ed8;
-}
-
-.capture-button span {
-  display: inline-block;
-
-  width: 11px;
-  height: 11px;
-
-  margin-right: 8px;
-
-  border-radius: 50%;
-
-  background: white;
-}
-
-.cancel-camera {
-  height: 48px;
-
-  padding: 0 20px;
-
-  border: 1px solid #dbe3ec;
-
-  border-radius: 12px;
-
-  background: #ffffff;
-
-  color: #475569;
-
-  font-weight: 700;
-
-  cursor: pointer;
-}
-
-
-/* =========================================================
-   TABLET
-========================================================= */
-
-@media (max-width: 850px) {
-
-  .verification-page {
-    padding: 50px 4%;
-  }
-
-  .upload-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .verification-action {
-    flex-direction: column;
-
-    align-items: stretch;
-  }
-
-  .verify-button {
-    width: 100%;
-  }
-
-  .privacy-note {
-    justify-content: center;
-  }
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media (max-width: 600px) {
-
-  .verification-page {
-    padding: 35px 16px;
-  }
-
-  .verification-header {
-    margin-bottom: 35px;
-  }
-
-  .verification-header h1 {
-    font-size: 48px;
-
-    letter-spacing: -2px;
-  }
-
-  .verification-header p {
-    font-size: 15px;
-  }
-
-  .verification-card {
+/* ==========================================================
+   LOADING
+   ========================================================== */
+
+.verification-loading {
+    margin-top: 22px;
     padding: 18px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    text-align: center;
+    color: #1d4ed8;
+    font-size: 14px;
+    font-weight: 650;
+}
 
-    border-radius: 18px;
-  }
+.loading-spinner {
+    width: 22px;
+    height: 22px;
+    margin: 0 auto 10px;
+    border: 3px solid #bfdbfe;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: verification-spin 0.8s linear infinite;
+}
 
-  .card-header {
+@keyframes verification-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ==========================================================
+   ERROR
+   ========================================================== */
+
+.verification-error {
+    margin-top: 20px;
+    padding: 15px 17px;
+    border-radius: 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+
+/* ==========================================================
+   INFO BOX
+   ========================================================== */
+
+.verification-info {
+    display: flex;
+    gap: 12px;
     align-items: flex-start;
-
-    gap: 15px;
-  }
-
-  .card-header h2 {
-    font-size: 20px;
-  }
-
-  .step {
-    font-size: 10px;
-
-    padding: 8px 10px;
-  }
-
-  .upload-box {
-    padding: 17px;
-  }
-
-  .upload-options {
-    min-height: 190px;
-  }
-
-  .file-preview img {
-    height: 180px;
-  }
-
-  .verification-action {
-    gap: 20px;
-  }
-
-  .privacy-note {
-    justify-content: flex-start;
-  }
-
-  .camera-overlay {
-    padding: 10px;
-  }
-
-  .camera-modal {
-    border-radius: 16px;
-  }
-
-  .camera-header {
-    padding: 17px;
-  }
-
-  .camera-header h2 {
-    font-size: 18px;
-  }
-
-  .camera-view {
-    aspect-ratio: 3 / 4;
-  }
-
-  .document-frame {
-    width: 86%;
-  }
-
-  .face-frame {
-    width: 55%;
-  }
-
-  .camera-controls {
-    flex-direction: column;
-
+    margin-top: 24px;
     padding: 16px;
-  }
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
 
-  .capture-button,
-  .cancel-camera {
-    width: 100%;
-  }
+.verification-info-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.verification-info p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #64748b;
+}
+
+
+/* ==========================================================
+   SECURITY POINTS
+   ========================================================== */
+
+.security-points {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.security-point {
+    padding: 15px;
+    border-radius: 13px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.security-point strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: #0f172a;
+}
+
+.security-point span {
+    font-size: 12px;
+    line-height: 1.4;
+    color: #64748b;
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media (max-width: 768px) {
+
+    .verification-page {
+        padding: 25px 15px 50px;
+    }
+
+    .verification-card {
+        padding: 22px;
+        border-radius: 18px;
+    }
+
+    .upload-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .security-points {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+@media (max-width: 480px) {
+
+    .verification-page {
+        padding: 18px 12px 40px;
+    }
+
+    .verification-header {
+        margin-bottom: 25px;
+    }
+
+    .verification-header h1 {
+        font-size: 30px;
+    }
+
+    .verification-header p {
+        font-size: 14px;
+    }
+
+    .verification-card {
+        padding: 17px;
+        border-radius: 16px;
+    }
+
+    .verification-section h2 {
+        font-size: 19px;
+    }
+
+    .upload-box,
+    .upload-content {
+        min-height: 205px;
+    }
+
+    .upload-preview {
+        height: 205px;
+    }
+
+    .verify-button {
+        min-height: 52px;
+        font-size: 15px;
+    }
+
 }

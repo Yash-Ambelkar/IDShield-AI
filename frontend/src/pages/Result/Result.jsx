@@ -1,1227 +1,912 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Result.css";
 
+
+// ==========================================================
+// IDShield AI - RESULT PAGE
+// ==========================================================
+
 function Result() {
-  const navigate = useNavigate();
 
-  const [result, setResult] = useState(null);
+    const navigate = useNavigate();
 
-  const [documentPreview, setDocumentPreview] = useState(null);
-  const [selfiePreview, setSelfiePreview] = useState(null);
+    const [result, setResult] = useState(null);
 
-  const [documentName, setDocumentName] = useState("");
-  const [selfieName, setSelfieName] = useState("");
+    const [error, setError] = useState("");
 
-  // ======================================================
-  // LOAD VERIFICATION RESULT + FILE PREVIEWS
-  // ======================================================
 
-  useEffect(() => {
-    const storedResult =
-      sessionStorage.getItem("verificationResult");
+    // ======================================================
+    // LOAD RESULT
+    // ======================================================
 
-    if (!storedResult) {
-      navigate("/verification");
-      return;
+    useEffect(() => {
+
+        try {
+
+            const storedResult =
+                sessionStorage.getItem(
+                    "verificationResult"
+                );
+
+
+            if (!storedResult) {
+
+                setError(
+                    "No verification result was found."
+                );
+
+                return;
+            }
+
+
+            const parsedResult =
+                JSON.parse(
+                    storedResult
+                );
+
+
+            setResult(
+                parsedResult
+            );
+
+
+        } catch (err) {
+
+            console.error(
+                "Unable to load verification result:",
+                err
+            );
+
+
+            setError(
+                "Unable to load verification result."
+            );
+
+        }
+
+    }, []);
+
+
+    // ======================================================
+    // START NEW VERIFICATION
+    // ======================================================
+
+    const handleNewVerification = () => {
+
+        sessionStorage.removeItem(
+            "verificationResult"
+        );
+
+        sessionStorage.removeItem(
+            "documentName"
+        );
+
+        sessionStorage.removeItem(
+            "selfieName"
+        );
+
+
+        navigate(
+            "/verification"
+        );
+
+    };
+
+
+    // ======================================================
+    // LOADING
+    // ======================================================
+
+    if (!result && !error) {
+
+        return (
+
+            <div className="result-page">
+
+                <div className="result-card">
+
+                    <h2>
+                        Loading verification result...
+                    </h2>
+
+                </div>
+
+            </div>
+
+        );
+
     }
 
-    try {
-      // ==================================================
-      // LOAD BACKEND RESULT
-      // ==================================================
 
-      const parsedResult = JSON.parse(storedResult);
+    // ======================================================
+    // ERROR
+    // ======================================================
 
-      setResult(parsedResult);
+    if (error) {
 
-      // ==================================================
-      // LOAD UPLOADED FILES
-      // ==================================================
+        return (
 
-      const storedFiles =
-        sessionStorage.getItem("verificationFiles");
+            <div className="result-page">
 
-      if (storedFiles) {
-        const files = JSON.parse(storedFiles);
+                <div className="result-card">
 
-        // ------------------------------------------------
-        // DOCUMENT PREVIEW
-        // ------------------------------------------------
+                    <h2>
+                        Verification Result
+                    </h2>
 
-        if (files.document) {
-          setDocumentPreview(files.document);
-        }
 
-        // ------------------------------------------------
-        // SELFIE PREVIEW
-        // ------------------------------------------------
+                    <p className="result-error">
 
-        if (files.selfie) {
-          setSelfiePreview(files.selfie);
-        }
+                        {error}
 
-        // ------------------------------------------------
-        // DOCUMENT NAME
-        // ------------------------------------------------
+                    </p>
 
-        if (files.documentName) {
-          setDocumentName(files.documentName);
-        }
 
-        // ------------------------------------------------
-        // SELFIE NAME
-        // ------------------------------------------------
+                    <button
+                        onClick={
+                            handleNewVerification
+                        }
+                    >
+                        Start New Verification
+                    </button>
 
-        if (files.selfieName) {
-          setSelfieName(files.selfieName);
-        }
-      }
+                </div>
 
-    } catch (error) {
-      console.error(
-        "Unable to read verification result:",
-        error
-      );
+            </div>
 
-      navigate("/verification");
+        );
+
     }
 
-  }, [navigate]);
+
+    // ======================================================
+    // EXTRACT RESULTS
+    // ======================================================
+
+    const risk =
+        result?.risk || {};
 
 
-  // ======================================================
-  // LOADING
-  // ======================================================
+    const validation =
+        result?.validation || {};
 
-  if (!result) {
+
+    const authenticity =
+        result?.authenticity || {};
+
+
+    const tampering =
+        result?.tampering || {};
+
+
+    const face =
+        result?.face_verification || {};
+
+
+    // ======================================================
+    // BASIC VALUES
+    // ======================================================
+
+    const decision =
+        risk?.decision ||
+        "UNKNOWN";
+
+
+    const riskLevel =
+        risk?.risk_level ||
+        "UNKNOWN";
+
+
+    const riskScore =
+        risk?.risk_score ??
+        "N/A";
+
+
+    const validationStatus =
+        validation?.status ||
+        risk?.checks?.validation ||
+        "UNKNOWN";
+
+
+    const authenticityStatus =
+        authenticity?.status ||
+        risk?.checks?.authenticity ||
+        "UNKNOWN";
+
+
+    const tamperingStatus =
+        tampering?.status ||
+        risk?.checks?.tampering ||
+        "UNKNOWN";
+
+
+    const faceStatus =
+        face?.status ||
+        risk?.checks?.face_verification ||
+        "UNKNOWN";
+
+
+    const faceSimilarity =
+        face?.similarity_score;
+
+
+    const authorityMatch =
+        authenticity?.match_score;
+
+
+    const recordFound =
+        authenticity?.record_found;
+
+
+    const tamperingScore =
+        tampering?.tampering_score;
+
+
+    const warnings =
+        Array.isArray(
+            risk?.warnings
+        )
+            ? risk.warnings
+            : [];
+
+
+    // ======================================================
+    // DECISION CLASS
+    // ======================================================
+
+    let decisionClass =
+        "decision-review";
+
+
+    if (
+        decision ===
+        "DOCUMENT APPROVED"
+    ) {
+
+        decisionClass =
+            "decision-approved";
+
+    }
+
+
+    else if (
+        decision ===
+        "DOCUMENT REJECTED"
+    ) {
+
+        decisionClass =
+            "decision-rejected";
+
+    }
+
+
+    // ======================================================
+    // RISK CLASS
+    // ======================================================
+
+    let riskClass =
+        "risk-medium";
+
+
+    if (
+        riskLevel === "LOW"
+    ) {
+
+        riskClass =
+            "risk-low";
+
+    }
+
+
+    else if (
+        riskLevel === "HIGH"
+    ) {
+
+        riskClass =
+            "risk-high";
+
+    }
+
+
+    // ======================================================
+    // STATUS CLASS HELPER
+    // ======================================================
+
+    const getStatusClass = (
+        status
+    ) => {
+
+        if (
+            status === "PASS" ||
+            status === "VERIFIED" ||
+            status === "MATCH"
+        ) {
+
+            return "status-pass";
+
+        }
+
+
+        if (
+            status === "FAIL" ||
+            status === "SUSPICIOUS" ||
+            status === "NO_MATCH" ||
+            status === "FLAGGED"
+        ) {
+
+            return "status-fail";
+
+        }
+
+
+        return "status-review";
+
+    };
+
+
+    // ======================================================
+    // FORMAT VALUE
+    // ======================================================
+
+    const formatValue = (
+        value
+    ) => {
+
+        if (
+            value === null ||
+            value === undefined
+        ) {
+
+            return "N/A";
+
+        }
+
+
+        return String(
+            value
+        );
+
+    };
+
+
+    // ======================================================
+    // RENDER
+    // ======================================================
+
     return (
-      <div className="result-loading">
 
-        <div className="loading-spinner"></div>
-
-        <h2>
-          Loading verification result...
-        </h2>
-
-        <p>
-          Please wait while the verification result is loaded.
-        </p>
-
-      </div>
-    );
-  }
-
-
-  // ======================================================
-  // BACKEND DATA
-  // ======================================================
-
-  const ocrData =
-    result.ocr?.document_data || {};
-
-  const validation =
-    result.validation || {};
-
-  const tampering =
-    result.tampering || {};
-
-  const face =
-    result.face_verification || {};
-
-  const risk =
-    result.risk || {};
-
-
-  // ======================================================
-  // BASIC VALUES
-  // ======================================================
-
-  const decision =
-    risk.decision || "UNKNOWN";
-
-  const riskLevel =
-    risk.risk_level || "UNKNOWN";
-
-  const riskScore =
-    risk.risk_score ?? 0;
-
-  const validationScore =
-    validation.validation_score ?? 0;
-
-  const tamperingScore =
-    tampering.tampering_score ?? 0;
-
-  const faceSimilarity =
-    face.similarity_score;
-
-
-  // ======================================================
-  // FINAL DECISION STATES
-  // ======================================================
-
-  const isApproved =
-    decision === "DOCUMENT APPROVED";
-
-  const isRejected =
-    decision === "DOCUMENT REJECTED";
-
-
-  const faceMatched =
-    face.status === "MATCH";
-
-
-  // ======================================================
-  // OCR FIELD COUNT
-  // ======================================================
-
-  const extractedFields =
-    [
-      ocrData.document_type,
-      ocrData.document_number,
-      ocrData.name,
-      ocrData.nationality,
-      ocrData.date_of_birth,
-      ocrData.date_of_expiry,
-      ocrData.gender
-    ].filter(
-      (value) =>
-        value !== null &&
-        value !== undefined &&
-        value !== ""
-    ).length;
-
-
-  // ======================================================
-  // NEW VERIFICATION
-  // ======================================================
-
-  const newVerification = () => {
-
-    sessionStorage.removeItem(
-      "verificationResult"
-    );
-
-    sessionStorage.removeItem(
-      "verificationFiles"
-    );
-
-    sessionStorage.removeItem(
-      "uploadedDocument"
-    );
-
-    sessionStorage.removeItem(
-      "uploadedSelfie"
-    );
-
-    sessionStorage.removeItem(
-      "documentName"
-    );
-
-    sessionStorage.removeItem(
-      "selfieName"
-    );
-
-    navigate("/verification");
-
-  };
-
-
-  // ======================================================
-  // DOCUMENT TYPE
-  // ======================================================
-
-  const documentType =
-    ocrData.document_type ||
-    "Not detected";
-
-
-  // ======================================================
-  // PDF DETECTION
-  // ======================================================
-
-  const isPDF =
-    documentName &&
-    documentName
-      .toLowerCase()
-      .endsWith(".pdf");
-
-
-  // ======================================================
-  // RENDER
-  // ======================================================
-
-  return (
-
-    <div className="result-page">
-
-
-      {/* ==================================================
-          HEADER
-      ================================================== */}
-
-      <div className="result-header">
-
-        <div>
-
-          <div className="eyebrow">
-
-            <span>
-              ✦
-            </span>
-
-            VERIFICATION RESULT
-
-          </div>
-
-
-          <h1>
-
-            Verification
-
-            <br />
-
-            <span>
-              result.
-            </span>
-
-          </h1>
-
-
-          <p className="result-intro">
-
-            AI analysis has completed the identity
-            verification process.
-
-          </p>
-
-        </div>
-
-
-        <button
-          className="new-verification"
-          onClick={newVerification}
-        >
-
-          + New Verification
-
-        </button>
-
-      </div>
-
-
-
-      {/* ==================================================
-          SUBMITTED FILES
-      ================================================== */}
-
-      <section className="submitted-section">
-
-
-        <div className="section-heading">
-
-          <div>
-
-            <span className="mini-label">
-              SUBMITTED FILES
-            </span>
-
-            <h2>
-              Your uploaded documents
-            </h2>
-
-          </div>
-
-
-          <p>
-            These are the files analyzed by IDShield AI.
-          </p>
-
-        </div>
-
-
-
-        <div className="submitted-grid">
-
-
-          {/* ==================================================
-              IDENTITY DOCUMENT
-          ================================================== */}
-
-          <div className="submitted-card">
-
-
-            <div className="submitted-card-header">
-
-
-              <div className="submitted-title">
-
-                <div className="submitted-icon">
-                  ▣
-                </div>
-
-
-                <div>
-
-                  <h3>
-                    Identity Document
-                  </h3>
-
-                  <span>
-                    Document submitted for verification
-                  </span>
-
-                </div>
-
-              </div>
-
-
-              <span className="uploaded-badge">
-
-                ✓ UPLOADED
-
-              </span>
-
-            </div>
-
-
+        <div className="result-page">
 
             {/* ==================================================
-                DOCUMENT PREVIEW
+                HEADER
             ================================================== */}
 
-            <div className="document-preview">
+            <div className="result-header">
 
-              {documentPreview ? (
+                <h1>
+                    IDShield AI
+                </h1>
 
-                isPDF ? (
 
-                  <div className="pdf-result-preview">
-
-                    <div className="pdf-result-icon">
-                      PDF
-                    </div>
-
-                    <strong>
-                      {documentName || "PDF document"}
-                    </strong>
-
-                    <span>
-                      PDF document uploaded successfully
-                    </span>
-
-                  </div>
-
-                ) : (
-
-                  <img
-                    src={documentPreview}
-                    alt="Uploaded identity document"
-                  />
-
-                )
-
-              ) : (
-
-                <div className="preview-empty">
-
-                  <div className="preview-empty-icon">
-                    ▣
-                  </div>
-
-                  <strong>
-                    Document preview unavailable
-                  </strong>
-
-                  <span>
-                    The document was submitted successfully.
-                  </span>
-
-                </div>
-
-              )}
-
-            </div>
-
-
-
-            {/* ==================================================
-                DOCUMENT FILE INFORMATION
-            ================================================== */}
-
-            <div className="file-information">
-
-              <span>
-                FILE NAME
-              </span>
-
-
-              <strong>
-                {documentName || "Uploaded document"}
-              </strong>
-
-            </div>
-
-
-          </div>
-
-
-
-          {/* ==================================================
-              FACE PHOTO
-          ================================================== */}
-
-          <div className="submitted-card">
-
-
-            <div className="submitted-card-header">
-
-
-              <div className="submitted-title">
-
-                <div className="submitted-icon face">
-                  ◉
-                </div>
-
-
-                <div>
-
-                  <h3>
-                    Face Photo
-                  </h3>
-
-                  <span>
-                    Photo submitted for face verification
-                  </span>
-
-                </div>
-
-              </div>
-
-
-              <span className="uploaded-badge">
-
-                ✓ UPLOADED
-
-              </span>
-
-            </div>
-
-
-
-            {/* ==================================================
-                SELFIE PREVIEW
-            ================================================== */}
-
-            <div className="face-preview">
-
-              {selfiePreview ? (
-
-                <img
-                  src={selfiePreview}
-                  alt="Uploaded face"
-                />
-
-              ) : (
-
-                <div className="preview-empty">
-
-                  <div className="preview-empty-icon">
-                    ◉
-                  </div>
-
-                  <strong>
-                    Face preview unavailable
-                  </strong>
-
-                  <span>
-                    The face image was submitted successfully.
-                  </span>
-
-                </div>
-
-              )}
-
-            </div>
-
-
-
-            {/* ==================================================
-                SELFIE FILE INFORMATION
-            ================================================== */}
-
-            <div className="file-information">
-
-              <span>
-                FILE NAME
-              </span>
-
-
-              <strong>
-                {selfieName || "Uploaded face photo"}
-              </strong>
-
-            </div>
-
-
-          </div>
-
-
-        </div>
-
-      </section>
-
-
-
-      {/* ==================================================
-          FINAL DECISION
-      ================================================== */}
-
-      <div
-        className={`result-summary ${
-          isApproved
-            ? "approved"
-            : isRejected
-            ? "rejected"
-            : "review"
-        }`}
-      >
-
-
-        <div className="result-status">
-
-
-          <div className="result-check">
-
-            {isApproved
-              ? "✓"
-              : isRejected
-              ? "×"
-              : "!"}
-
-          </div>
-
-
-          <div>
-
-            <span className="result-label">
-              FINAL DECISION
-            </span>
-
-
-            <h2>
-              {decision}
-            </h2>
-
-
-            <p>
-
-              {isApproved
-
-                ? "All required verification checks passed successfully."
-
-                : isRejected
-
-                ? "One or more verification checks failed."
-
-                : "The document requires additional review."
-
-              }
-
-            </p>
-
-          </div>
-
-
-        </div>
-
-
-
-        <div className="risk-score">
-
-          <span>
-            RISK SCORE
-          </span>
-
-
-          <strong>
-            {String(riskScore).padStart(2, "0")}
-          </strong>
-
-
-          <small>
-            {riskLevel} RISK
-          </small>
-
-        </div>
-
-
-      </div>
-
-
-
-      {/* ==================================================
-          VERIFICATION CHECKS
-      ================================================== */}
-
-      <div className="result-grid">
-
-
-        {/* ==================================================
-            OCR
-        ================================================== */}
-
-        <div className="result-card">
-
-
-          <div className="result-card-top">
-
-
-            <div className="result-icon">
-              ▤
-            </div>
-
-
-            <span
-              className={
-                result.ocr?.status === "PASS"
-                  ? "passed"
-                  : result.ocr?.status === "FAIL"
-                  ? "failed"
-                  : "unknown"
-              }
-            >
-
-              {result.ocr?.status || "UNKNOWN"}
-
-            </span>
-
-
-          </div>
-
-
-          <h3>
-            Document OCR
-          </h3>
-
-
-          <p>
-            Identity information extracted from
-            the submitted document.
-          </p>
-
-
-          <div className="result-line">
-
-            <span>
-              Fields extracted
-            </span>
-
-
-            <strong>
-              {extractedFields} / 7
-            </strong>
-
-          </div>
-
-
-        </div>
-
-
-
-        {/* ==================================================
-            VALIDATION
-        ================================================== */}
-
-        <div className="result-card">
-
-
-          <div className="result-card-top">
-
-
-            <div className="result-icon">
-              ✓
-            </div>
-
-
-            <span
-              className={
-                validation.status === "PASS"
-                  ? "passed"
-                  : validation.status === "FAIL"
-                  ? "failed"
-                  : "unknown"
-              }
-            >
-
-              {validation.status || "UNKNOWN"}
-
-            </span>
-
-
-          </div>
-
-
-          <h3>
-            Document Validation
-          </h3>
-
-
-          <p>
-            Required fields, dates and document
-            information were checked.
-          </p>
-
-
-          <div className="result-line">
-
-            <span>
-              Validation score
-            </span>
-
-
-            <strong>
-              {validationScore}%
-            </strong>
-
-          </div>
-
-
-        </div>
-
-
-
-        {/* ==================================================
-            TAMPERING
-        ================================================== */}
-
-        <div className="result-card">
-
-
-          <div className="result-card-top">
-
-
-            <div className="result-icon">
-              ⌁
-            </div>
-
-
-            <span
-              className={
-                tampering.status === "PASS"
-                  ? "passed"
-                  : tampering.status === "FAIL"
-                  ? "failed"
-                  : tampering.status === "FLAGGED"
-                  ? "failed"
-                  : "unknown"
-              }
-            >
-
-              {tampering.status || "UNKNOWN"}
-
-            </span>
-
-
-          </div>
-
-
-          <h3>
-            Tampering Detection
-          </h3>
-
-
-          <p>
-            The submitted document was checked for
-            suspicious visual modifications.
-          </p>
-
-
-          <div className="result-line">
-
-            <span>
-              Tampering score
-            </span>
-
-
-            <strong>
-              {tamperingScore}
-            </strong>
-
-          </div>
-
-
-        </div>
-
-
-
-        {/* ==================================================
-            FACE
-        ================================================== */}
-
-        <div className="result-card">
-
-
-          <div className="result-card-top">
-
-
-            <div className="result-icon">
-              ◉
-            </div>
-
-
-            <span
-              className={
-                faceMatched
-                  ? "passed"
-                  : face.status === "NO_MATCH"
-                  ? "failed"
-                  : "unknown"
-              }
-            >
-
-              {face.status || "UNKNOWN"}
-
-            </span>
-
-
-          </div>
-
-
-          <h3>
-            Face Verification
-          </h3>
-
-
-          <p>
-
-            {face.status === "NO_FACE"
-
-              ? "No face was detected in the identity document."
-
-              : face.status === "MATCH"
-
-              ? "The submitted face matches the document identity."
-
-              : face.status === "NO_MATCH"
-
-              ? "The submitted face does not match the document."
-
-              : face.message ||
-                "Face verification could not be completed."
-
-            }
-
-          </p>
-
-
-          <div className="result-line">
-
-            <span>
-              Similarity
-            </span>
-
-
-            <strong>
-
-              {faceSimilarity !== null &&
-              faceSimilarity !== undefined
-
-                ? `${faceSimilarity}%`
-
-                : "N/A"}
-
-            </strong>
-
-          </div>
-
-
-        </div>
-
-
-      </div>
-
-
-
-      {/* ==================================================
-          DOCUMENT DETAILS
-      ================================================== */}
-
-      <div className="details-card">
-
-
-        <div className="details-heading">
-
-
-          <div>
-
-            <span className="mini-label">
-              EXTRACTED INFORMATION
-            </span>
-
-
-            <h2>
-              Document Details
-            </h2>
-
-          </div>
-
-
-          <span
-            className={
-              validation.status === "PASS"
-                ? "verified-badge"
-                : "review-badge"
-            }
-          >
-
-            {validation.status === "PASS"
-              ? "✓ VERIFIED"
-              : "⚠ REVIEW"}
-
-          </span>
-
-
-        </div>
-
-
-
-        <div className="details-grid">
-
-
-          {/* ==================================================
-              DOCUMENT TYPE
-          ================================================== */}
-
-          <div>
-
-            <span>
-              Document Type
-            </span>
-
-
-            <strong>
-              {documentType}
-            </strong>
-
-          </div>
-
-
-
-          {/* ==================================================
-              NAME
-          ================================================== */}
-
-          <div>
-
-            <span>
-              Full Name
-            </span>
-
-
-            <strong>
-              {ocrData.name ||
-                "Not detected"}
-            </strong>
-
-          </div>
-
-
-
-          {/* ==================================================
-              DOCUMENT NUMBER
-          ================================================== */}
-
-          <div>
-
-            <span>
-              Document Number
-            </span>
-
-
-            <strong>
-              {ocrData.document_number ||
-                "Not detected"}
-            </strong>
-
-          </div>
-
-
-
-          {/* ==================================================
-              NATIONALITY
-          ================================================== */}
-
-          <div>
-
-            <span>
-              Nationality
-            </span>
-
-
-            <strong>
-              {ocrData.nationality ||
-                "Not detected"}
-            </strong>
-
-          </div>
-
-
-
-          {/* ==================================================
-              DATE OF BIRTH
-          ================================================== */}
-
-          <div>
-
-            <span>
-              Date of Birth
-            </span>
-
-
-            <strong>
-              {ocrData.date_of_birth ||
-                "Not detected"}
-            </strong>
-
-          </div>
-
-
-
-          {/* ==================================================
-              DATE OF EXPIRY
-          ================================================== */}
-
-          <div>
-
-            <span>
-              Date of Expiry
-            </span>
-
-
-            <strong>
-              {ocrData.date_of_expiry ||
-                "Not detected"}
-            </strong>
-
-          </div>
-
-
-
-          {/* ==================================================
-              GENDER
-          ================================================== */}
-
-          <div>
-
-            <span>
-              Gender
-            </span>
-
-
-            <strong>
-              {ocrData.gender ||
-                "Not detected"}
-            </strong>
-
-          </div>
-
-
-        </div>
-
-      </div>
-
-
-
-      {/* ==================================================
-          WARNINGS
-      ================================================== */}
-
-      {risk.warnings &&
-        risk.warnings.length > 0 && (
-
-        <div className="warnings-card">
-
-
-          <div className="warnings-icon">
-            !
-          </div>
-
-
-          <div>
-
-            <strong>
-              Verification Warnings
-            </strong>
-
-
-            {risk.warnings.map(
-              (warning, index) => (
-
-                <p key={index}>
-                  {warning}
+                <p>
+                    Document Verification Result
                 </p>
 
-              )
+            </div>
+
+
+            {/* ==================================================
+                FINAL DECISION
+            ================================================== */}
+
+            <div
+                className={
+                    `result-decision ${decisionClass}`
+                }
+            >
+
+                <div className="decision-icon">
+
+                    {decision ===
+                    "DOCUMENT APPROVED"
+                        ? "✓"
+                        : decision ===
+                          "DOCUMENT REJECTED"
+                            ? "✕"
+                            : "!"}
+
+                </div>
+
+
+                <div>
+
+                    <p className="decision-label">
+                        FINAL DECISION
+                    </p>
+
+
+                    <h2>
+                        {decision}
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            {/* ==================================================
+                RISK SUMMARY
+            ================================================== */}
+
+            <div className="risk-summary">
+
+                <div className="risk-box">
+
+                    <span>
+                        Risk Score
+                    </span>
+
+
+                    <strong
+                        className={riskClass}
+                    >
+                        {formatValue(
+                            riskScore
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div className="risk-box">
+
+                    <span>
+                        Risk Level
+                    </span>
+
+
+                    <strong
+                        className={riskClass}
+                    >
+                        {riskLevel}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            {/* ==================================================
+                VERIFICATION CHECKS
+            ================================================== */}
+
+            <div className="verification-card">
+
+                <h2>
+                    Verification Checks
+                </h2>
+
+
+                <div className="checks-grid">
+
+
+                    {/* ------------------------------------------
+                        DOCUMENT VALIDATION
+                    ------------------------------------------ */}
+
+                    <div className="check-item">
+
+                        <div>
+
+                            <h3>
+                                Document Validation
+                            </h3>
+
+                            <p>
+                                Structure and field validation
+                            </p>
+
+                        </div>
+
+
+                        <span
+                            className={
+                                `status-badge ${
+                                    getStatusClass(
+                                        validationStatus
+                                    )
+                                }`
+                            }
+                        >
+
+                            {validationStatus}
+
+                        </span>
+
+                    </div>
+
+
+                    {/* ------------------------------------------
+                        AUTHENTICITY
+                    ------------------------------------------ */}
+
+                    <div className="check-item">
+
+                        <div>
+
+                            <h3>
+                                Authority Verification
+                            </h3>
+
+                            <p>
+                                Authoritative record verification
+                            </p>
+
+                        </div>
+
+
+                        <span
+                            className={
+                                `status-badge ${
+                                    getStatusClass(
+                                        authenticityStatus
+                                    )
+                                }`
+                            }
+                        >
+
+                            {authenticityStatus}
+
+                        </span>
+
+                    </div>
+
+
+                    {/* ------------------------------------------
+                        FORENSIC
+                    ------------------------------------------ */}
+
+                    <div className="check-item">
+
+                        <div>
+
+                            <h3>
+                                Forensic Analysis
+                            </h3>
+
+                            <p>
+                                Document tampering analysis
+                            </p>
+
+                        </div>
+
+
+                        <span
+                            className={
+                                `status-badge ${
+                                    getStatusClass(
+                                        tamperingStatus
+                                    )
+                                }`
+                            }
+                        >
+
+                            {tamperingStatus}
+
+                        </span>
+
+                    </div>
+
+
+                    {/* ------------------------------------------
+                        FACE
+                    ------------------------------------------ */}
+
+                    <div className="check-item">
+
+                        <div>
+
+                            <h3>
+                                Face Verification
+                            </h3>
+
+                            <p>
+                                Selfie vs document portrait
+                            </p>
+
+                        </div>
+
+
+                        <span
+                            className={
+                                `status-badge ${
+                                    getStatusClass(
+                                        faceStatus
+                                    )
+                                }`
+                            }
+                        >
+
+                            {faceStatus}
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {/* ==================================================
+                DETAILED RESULTS
+            ================================================== */}
+
+            <div className="details-grid">
+
+
+                {/* ==================================================
+                    AUTHORITY
+                ================================================== */}
+
+                <div className="detail-card">
+
+                    <h2>
+                        Authority Verification
+                    </h2>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Status
+                        </span>
+
+                        <strong>
+                            {formatValue(
+                                authenticityStatus
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Record Found
+                        </span>
+
+                        <strong>
+                            {recordFound === true
+                                ? "Yes"
+                                : recordFound === false
+                                    ? "No"
+                                    : "N/A"}
+                        </strong>
+
+                    </div>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Match Score
+                        </span>
+
+                        <strong>
+                            {authorityMatch !==
+                            undefined &&
+                            authorityMatch !==
+                            null
+                                ? `${authorityMatch}%`
+                                : "N/A"}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                {/* ==================================================
+                    FORENSIC
+                ================================================== */}
+
+                <div className="detail-card">
+
+                    <h2>
+                        Forensic Analysis
+                    </h2>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Status
+                        </span>
+
+                        <strong>
+                            {formatValue(
+                                tamperingStatus
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Tampering Score
+                        </span>
+
+                        <strong>
+                            {formatValue(
+                                tamperingScore
+                            )}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                {/* ==================================================
+                    FACE
+                ================================================== */}
+
+                <div className="detail-card">
+
+                    <h2>
+                        Face Verification
+                    </h2>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Status
+                        </span>
+
+                        <strong>
+                            {formatValue(
+                                faceStatus
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Similarity
+                        </span>
+
+                        <strong>
+                            {faceSimilarity !==
+                            undefined &&
+                            faceSimilarity !==
+                            null
+                                ? `${faceSimilarity}`
+                                : "N/A"}
+                        </strong>
+
+                    </div>
+
+
+                    <div className="detail-row">
+
+                        <span>
+                            Document Portrait
+                        </span>
+
+                        <strong>
+                            {face?.document_face_found
+                                ? "Found"
+                                : "Not Found"}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {/* ==================================================
+                WARNINGS
+            ================================================== */}
+
+            {warnings.length > 0 && (
+
+                <div className="warnings-card">
+
+                    <h2>
+                        Warnings
+                    </h2>
+
+
+                    <div>
+
+                        {warnings.map(
+                            (
+                                warning,
+                                index
+                            ) => (
+
+                                <div
+                                    className="warning-item"
+                                    key={index}
+                                >
+
+                                    <span>
+                                        !
+                                    </span>
+
+
+                                    <p>
+                                        {warning}
+                                    </p>
+
+                                </div>
+
+                            )
+                        )}
+
+                    </div>
+
+                </div>
+
             )}
 
-          </div>
+
+            {/* ==================================================
+                REQUEST INFORMATION
+            ================================================== */}
+
+            {result?.request_id && (
+
+                <div className="request-information">
+
+                    <span>
+                        Verification ID
+                    </span>
+
+
+                    <code>
+                        {result.request_id}
+                    </code>
+
+                </div>
+
+            )}
+
+
+            {/* ==================================================
+                ACTIONS
+            ================================================== */}
+
+            <div className="result-actions">
+
+                <button
+                    type="button"
+                    onClick={
+                        handleNewVerification
+                    }
+                >
+                    Verify Another Document
+                </button>
+
+            </div>
 
 
         </div>
 
-      )}
+    );
 
-
-
-      {/* ==================================================
-          AUDIT
-      ================================================== */}
-
-      <div className="audit-card">
-
-
-        <div className="audit-icon">
-          ✓
-        </div>
-
-
-        <div>
-
-          <strong>
-            Verification completed
-          </strong>
-
-
-          <p>
-            Results were generated by the IDShield AI
-            verification pipeline using the submitted files.
-          </p>
-
-        </div>
-
-
-        <div className="audit-id">
-
-          <span>
-            VERIFICATION ID
-          </span>
-
-
-          <strong>
-            {result.verification_id ||
-              "N/A"}
-          </strong>
-
-        </div>
-
-
-      </div>
-
-
-    </div>
-
-  );
 }
+
 
 export default Result;

@@ -2,32 +2,55 @@ import os
 import sys
 import json
 import gc
+import cv2
 
 
 # ==========================================================
-# IDShield AI - HOSTED VERIFICATION PIPELINE
+# IDShield AI - COMPLETE DOCUMENT VERIFICATION PIPELINE
 # ==========================================================
 #
-# Pipeline:
+# PIPELINE
 #
 # 1. OCR
 # 2. Document Validation
 # 3. Authority / Authenticity
 # 4. Forensic / Tampering Analysis
-# 5. Face Verification
-# 6. Risk Engine
-# 7. Final Decision
+# 5. Document Portrait Extraction
+# 6. Face Verification
+# 7. Risk Engine
+# 8. Final Decision
 #
-# Hosted configuration:
 #
-# OCR             -> ENABLED
-# Validation      -> ENABLED
-# Authenticity    -> ENABLED
-# Tampering       -> ENABLED
-# Face            -> DISABLED
+# FACE FLOW
 #
-# Face verification is temporarily disabled because the
-# current hosted instance has limited RAM.
+# SELFIE
+#    +
+# DOCUMENT
+#    ↓
+# DOCUMENT PORTRAIT EXTRACTION
+#    ↓
+# PORTRAIT CROP
+#    ↓
+# NORMALIZATION
+#    ↓
+# ARCFACE
+#    ↓
+# MATCH / NO_MATCH
+#
+#
+# IMPORTANT
+#
+# Face verification compares:
+#
+#     SELFIE
+#       VS
+#     DOCUMENT PORTRAIT
+#
+# NOT:
+#
+#     SELFIE
+#       VS
+#     WHOLE DOCUMENT
 #
 # ==========================================================
 
@@ -35,19 +58,10 @@ import gc
 # ==========================================================
 # PADDLEOCR CONFIGURATION
 # ==========================================================
-#
-# IMPORTANT:
-# This must be configured BEFORE PaddleOCR/PaddlePaddle
-# is imported.
-#
-# This prevents oneDNN / MKLDNN related errors such as:
-#
-# ConvertPirAttribute2RuntimeAttribute not support
-# [pir::ArrayAttribute<pir::DoubleAttribute>]
-#
-# ==========================================================
 
-os.environ["PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT"] = "0"
+os.environ[
+    "PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT"
+] = "0"
 
 
 # ==========================================================
@@ -67,72 +81,56 @@ if BASE_DIR not in sys.path:
 
 
 # ==========================================================
-# OCR MODEL
+# CONFIGURATION
+# ==========================================================
+
+# ----------------------------------------------------------
+# Face verification
+# ----------------------------------------------------------
+#
+# True  = enable face verification
+# False = disable face verification
+#
+# ----------------------------------------------------------
+
+FACE_VERIFICATION_ENABLED = True
+
+
+# ----------------------------------------------------------
+# Face recognition model
+# ----------------------------------------------------------
+
+FACE_MODEL = "ArcFace"
+
+
+# ----------------------------------------------------------
+# Face detector
+# ----------------------------------------------------------
+
+FACE_DETECTOR = "retinaface"
+
+
+# ----------------------------------------------------------
+# Minimum document portrait size
+# ----------------------------------------------------------
+
+MIN_FACE_IMAGE_SIZE = 160
+
+
+# ----------------------------------------------------------
+# Temporary verification portrait filename
+# ----------------------------------------------------------
+
+DOCUMENT_FACE_VERIFICATION_FILENAME = (
+    "document_face_verification.jpg"
+)
+
+
+# ==========================================================
+# OCR INSTANCE
 # ==========================================================
 
 _ocr_instance = None
-
-
-def get_ocr():
-    """
-    Initialize PaddleOCR only when required.
-
-    The OCR model is loaded lazily and reused between
-    requests to reduce memory usage.
-    """
-
-    global _ocr_instance
-
-    # ------------------------------------------------------
-    # Reuse existing OCR instance
-    # ------------------------------------------------------
-
-    if _ocr_instance is not None:
-
-        print(
-            "♻️ Reusing existing OCR model"
-        )
-
-        return _ocr_instance
-
-    # ------------------------------------------------------
-    # Initialize OCR
-    # ------------------------------------------------------
-
-    print(
-        "\n🔄 Initializing PaddleOCR..."
-    )
-
-    try:
-
-        from paddleocr import PaddleOCR
-
-        _ocr_instance = PaddleOCR(
-
-            lang="en",
-
-            # Disable oneDNN / MKLDNN
-            enable_mkldnn=False
-
-        )
-
-        print(
-            "✅ PaddleOCR initialized"
-        )
-
-        return _ocr_instance
-
-    except Exception as e:
-
-        print(
-            "\n❌ PaddleOCR initialization failed:"
-        )
-
-        print(
-            str(e)
-        )
-
-        raise
 
 
 # ==========================================================
@@ -141,23 +139,13 @@ def get_ocr():
 
 def cleanup_memory():
 
-    print(
-        "🧹 Cleaning unused memory..."
-    )
-
     try:
 
         gc.collect()
 
-    except Exception as e:
+    except Exception:
 
-        print(
-            f"⚠️ Memory cleanup warning: {e}"
-        )
-
-    print(
-        "✅ Memory cleanup completed"
-    )
+        pass
 
 
 # ==========================================================
@@ -199,6 +187,65 @@ def print_json(
 
 
 # ==========================================================
+# STEP 1 - OCR MODEL
+# ==========================================================
+
+def get_ocr():
+
+    global _ocr_instance
+
+    # ------------------------------------------------------
+    # Reuse OCR model
+    # ------------------------------------------------------
+
+    if _ocr_instance is not None:
+
+        print(
+            "♻️ Reusing existing OCR model"
+        )
+
+        return _ocr_instance
+
+    # ------------------------------------------------------
+    # Initialize PaddleOCR
+    # ------------------------------------------------------
+
+    print(
+        "\n🔄 Initializing PaddleOCR..."
+    )
+
+    try:
+
+        from paddleocr import PaddleOCR
+
+        _ocr_instance = PaddleOCR(
+
+            lang="en",
+
+            enable_mkldnn=False
+
+        )
+
+        print(
+            "✅ PaddleOCR initialized"
+        )
+
+        return _ocr_instance
+
+    except Exception as e:
+
+        print(
+            "\n❌ PaddleOCR initialization failed:"
+        )
+
+        print(
+            str(e)
+        )
+
+        raise
+
+
+# ==========================================================
 # STEP 1 - OCR
 # ==========================================================
 
@@ -223,7 +270,7 @@ def run_ocr(
     )
 
     # ======================================================
-    # VALIDATE DOCUMENT
+    # VALIDATE PATH
     # ======================================================
 
     if not document_path:
@@ -299,7 +346,11 @@ def run_ocr(
     except Exception as e:
 
         print(
-            f"\n❌ OCR scanning failed: {e}"
+            "\n❌ OCR scanning failed:"
+        )
+
+        print(
+            str(e)
         )
 
         return {
@@ -336,8 +387,6 @@ def run_ocr(
 
                 data = res.json
 
-                # Some PaddleOCR versions expose
-                # json as a callable.
                 if callable(data):
 
                     data = data()
@@ -428,7 +477,7 @@ def run_ocr(
         )
 
     # ======================================================
-    # STRUCTURED FIELD EXTRACTION
+    # EXTRACT STRUCTURED FIELDS
     # ======================================================
 
     try:
@@ -458,17 +507,13 @@ def run_ocr(
         }
 
     # ======================================================
-    # DISPLAY EXTRACTED DATA
+    # DISPLAY
     # ======================================================
 
     print_json(
         "EXTRACTED DOCUMENT DATA",
         document_data
     )
-
-    # ======================================================
-    # MEMORY CLEANUP
-    # ======================================================
 
     cleanup_memory()
 
@@ -541,29 +586,24 @@ def run_validation(
         result
     )
 
-    # ======================================================
-    # DECISION
-    # ======================================================
+    status = result.get(
+        "status",
+        "ERROR"
+    )
 
-    if result.get(
-        "status"
-    ) == "PASS":
+    if status == "PASS":
 
         print(
             "\n✅ DOCUMENT VALIDATION PASSED"
         )
 
-    elif result.get(
-        "status"
-    ) == "FLAGGED":
+    elif status == "FLAGGED":
 
         print(
             "\n⚠️ DOCUMENT VALIDATION FLAGGED"
         )
 
-    elif result.get(
-        "status"
-    ) == "FAIL":
+    elif status == "FAIL":
 
         print(
             "\n❌ DOCUMENT VALIDATION FAILED"
@@ -650,37 +690,30 @@ def run_authenticity(
         result
     )
 
-    # ======================================================
-    # DECISION
-    # ======================================================
+    status = result.get(
+        "status",
+        "ERROR"
+    )
 
-    if result.get(
-        "status"
-    ) == "VERIFIED":
+    if status == "VERIFIED":
 
         print(
             "\n✅ AUTHORITATIVE RECORD MATCHED"
         )
 
-    elif result.get(
-        "status"
-    ) == "SUSPICIOUS":
+    elif status == "SUSPICIOUS":
 
         print(
             "\n❌ DOCUMENT INFORMATION IS SUSPICIOUS"
         )
 
-    elif result.get(
-        "status"
-    ) == "REVIEW":
+    elif status == "REVIEW":
 
         print(
             "\n⚠️ DOCUMENT REQUIRES REVIEW"
         )
 
-    elif result.get(
-        "status"
-    ) == "NOT_FOUND":
+    elif status == "NOT_FOUND":
 
         print(
             "\n⚠️ NO AUTHORITATIVE RECORD FOUND"
@@ -698,7 +731,7 @@ def run_authenticity(
 
 
 # ==========================================================
-# STEP 4 - DOCUMENT FORENSIC / TAMPERING ANALYSIS
+# STEP 4 - TAMPERING / FORENSIC ANALYSIS
 # ==========================================================
 
 def run_tampering(
@@ -722,7 +755,7 @@ def run_tampering(
     )
 
     # ======================================================
-    # CHECK DOCUMENT
+    # VALIDATE PATH
     # ======================================================
 
     if not submitted_path:
@@ -758,7 +791,7 @@ def run_tampering(
         }
 
     # ======================================================
-    # RUN FORENSIC DETECTOR
+    # RUN DETECTOR
     # ======================================================
 
     print(
@@ -770,9 +803,6 @@ def run_tampering(
     )
 
     try:
-
-        # Lazy import to avoid loading the detector
-        # until it is actually required.
 
         from tampering.detector import (
             analyze_document
@@ -809,7 +839,7 @@ def run_tampering(
         }
 
     # ======================================================
-    # MAKE SURE RESULT IS A DICTIONARY
+    # VALIDATE RESULT
     # ======================================================
 
     if not isinstance(
@@ -826,7 +856,10 @@ def run_tampering(
                 None,
 
             "message":
-                "Tampering detector returned an invalid result."
+                (
+                    "Tampering detector returned "
+                    "an invalid result."
+                )
 
         }
 
@@ -839,46 +872,33 @@ def run_tampering(
         result
     )
 
-    # ======================================================
-    # DECISION
-    # ======================================================
+    status = result.get(
+        "status",
+        "ERROR"
+    )
 
-    if result.get(
-        "status"
-    ) == "PASS":
+    if status == "PASS":
 
         print(
             "\n✅ NO OBVIOUS FORENSIC ANOMALIES"
         )
 
-    elif result.get(
-        "status"
-    ) == "REVIEW":
+    elif status == "REVIEW":
 
         print(
             "\n⚠️ DOCUMENT REQUIRES FORENSIC REVIEW"
         )
 
-    elif result.get(
-        "status"
-    ) == "FLAGGED":
+    elif status == "FLAGGED":
 
         print(
             "\n❌ DOCUMENT FORENSIC CHECK FLAGGED"
         )
 
-    elif result.get(
-        "status"
-    ) == "ERROR":
-
-        print(
-            "\n⚠️ FORENSIC ANALYSIS FAILED"
-        )
-
     else:
 
         print(
-            "\n⚠️ UNKNOWN FORENSIC RESULT"
+            "\n⚠️ FORENSIC ANALYSIS FAILED"
         )
 
     cleanup_memory()
@@ -887,7 +907,390 @@ def run_tampering(
 
 
 # ==========================================================
-# STEP 5 - FACE VERIFICATION
+# STEP 5A - DOCUMENT PORTRAIT EXTRACTION
+# ==========================================================
+
+def prepare_document_face(
+    document_path
+):
+
+    print(
+        "\n" + "=" * 60
+    )
+
+    print(
+        "STEP 5A - DOCUMENT PORTRAIT EXTRACTION"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    print(
+        "\n🧑 Searching for portrait inside document..."
+    )
+
+    # ======================================================
+    # LOAD DOCUMENT FACE MODULE
+    # ======================================================
+
+    try:
+
+        from face.document_face import (
+            extract_document_face
+        )
+
+    except Exception as e:
+
+        print(
+            "\n❌ Unable to load document-face module:"
+        )
+
+        print(
+            str(e)
+        )
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "face_found":
+                False,
+
+            "face_path":
+                None,
+
+            "confidence":
+                None,
+
+            "facial_area":
+                None,
+
+            "message":
+                (
+                    "Document portrait module failed: "
+                    f"{str(e)}"
+                )
+
+        }
+
+    # ======================================================
+    # OUTPUT PATH
+    # ======================================================
+
+    output_path = os.path.join(
+
+        os.path.dirname(
+            document_path
+        ),
+
+        "document_face_crop.jpg"
+
+    )
+
+    # ======================================================
+    # EXTRACT
+    # ======================================================
+
+    try:
+
+        result = extract_document_face(
+
+            document_path,
+
+            output_path
+
+        )
+
+    except Exception as e:
+
+        print(
+            "\n❌ Document portrait extraction failed:"
+        )
+
+        print(
+            str(e)
+        )
+
+        result = {
+
+            "status":
+                "ERROR",
+
+            "face_found":
+                False,
+
+            "face_path":
+                None,
+
+            "confidence":
+                None,
+
+            "facial_area":
+                None,
+
+            "message":
+                (
+                    "Document portrait extraction failed: "
+                    f"{str(e)}"
+                )
+
+        }
+
+    # ======================================================
+    # VALIDATE RESULT
+    # ======================================================
+
+    if not isinstance(
+        result,
+        dict
+    ):
+
+        result = {
+
+            "status":
+                "ERROR",
+
+            "face_found":
+                False,
+
+            "face_path":
+                None,
+
+            "confidence":
+                None,
+
+            "facial_area":
+                None,
+
+            "message":
+                "Invalid portrait extraction result."
+
+        }
+
+    # ======================================================
+    # DISPLAY
+    # ======================================================
+
+    print_json(
+        "DOCUMENT PORTRAIT RESULT",
+        result
+    )
+
+    # ======================================================
+    # CHECK RESULT
+    # ======================================================
+
+    if result.get(
+        "face_found",
+        False
+    ):
+
+        print(
+            "\n✅ DOCUMENT PORTRAIT FOUND"
+        )
+
+        print(
+            "Portrait:",
+            result.get(
+                "face_path"
+            )
+        )
+
+        print(
+            "Confidence:",
+            result.get(
+                "confidence"
+            )
+        )
+
+    else:
+
+        print(
+            "\n⚠️ NO RELIABLE DOCUMENT PORTRAIT FOUND"
+        )
+
+    cleanup_memory()
+
+    return result
+
+
+# ==========================================================
+# STEP 5B - NORMALIZE DOCUMENT PORTRAIT
+# ==========================================================
+
+def normalize_document_face(
+    face_path
+):
+
+    """
+    Enlarges a small document portrait crop before sending
+    it to the face verification model.
+
+    Original crop is not modified.
+    """
+
+    if not face_path:
+
+        return None
+
+    if not os.path.exists(
+        face_path
+    ):
+
+        return None
+
+    image = cv2.imread(
+        face_path
+    )
+
+    if image is None:
+
+        return None
+
+    try:
+
+        height, width = image.shape[:2]
+
+        print(
+            f"\n📐 Original document portrait: "
+            f"{width} x {height}"
+        )
+
+        # --------------------------------------------------
+        # Calculate scale
+        # --------------------------------------------------
+
+        scale = max(
+
+            MIN_FACE_IMAGE_SIZE / width,
+
+            MIN_FACE_IMAGE_SIZE / height,
+
+            1.0
+
+        )
+
+        # --------------------------------------------------
+        # Already large enough
+        # --------------------------------------------------
+
+        if scale <= 1.0:
+
+            del image
+
+            cleanup_memory()
+
+            return face_path
+
+        # --------------------------------------------------
+        # New dimensions
+        # --------------------------------------------------
+
+        new_width = int(
+            width * scale
+        )
+
+        new_height = int(
+            height * scale
+        )
+
+        print(
+            f"🔍 Enlarging portrait to "
+            f"{new_width} x {new_height}"
+        )
+
+        # --------------------------------------------------
+        # Resize
+        # --------------------------------------------------
+
+        enlarged = cv2.resize(
+
+            image,
+
+            (
+                new_width,
+                new_height
+            ),
+
+            interpolation=cv2.INTER_CUBIC
+
+        )
+
+        # --------------------------------------------------
+        # Save verification image
+        # --------------------------------------------------
+
+        directory = os.path.dirname(
+            face_path
+        )
+
+        verification_path = os.path.join(
+
+            directory,
+
+            DOCUMENT_FACE_VERIFICATION_FILENAME
+
+        )
+
+        success = cv2.imwrite(
+
+            verification_path,
+
+            enlarged
+
+        )
+
+        del enlarged
+
+        del image
+
+        cleanup_memory()
+
+        if not success:
+
+            print(
+                "⚠️ Could not create verification portrait."
+            )
+
+            return face_path
+
+        print(
+            "\n✅ Verification portrait created:"
+        )
+
+        print(
+            verification_path
+        )
+
+        return verification_path
+
+    except Exception as e:
+
+        print(
+            "\n⚠️ Portrait normalization failed:"
+        )
+
+        print(
+            str(e)
+        )
+
+        try:
+
+            del image
+
+        except Exception:
+
+            pass
+
+        cleanup_memory()
+
+        return face_path
+
+
+# ==========================================================
+# STEP 5C - FACE VERIFICATION
 # ==========================================================
 
 def run_face_verification(
@@ -900,7 +1303,7 @@ def run_face_verification(
     )
 
     print(
-        "STEP 5 - FACE VERIFICATION"
+        "STEP 5C - FACE VERIFICATION"
     )
 
     print(
@@ -908,51 +1311,597 @@ def run_face_verification(
     )
 
     # ======================================================
-    # TEMPORARILY DISABLED
+    # CHECK ENABLED
     # ======================================================
-    #
-    # We keep this disabled on the current low-memory
-    # hosted instance.
-    #
-    # The function remains in the pipeline so that face
-    # verification can be enabled later without changing
-    # the API structure.
-    #
+
+    if not FACE_VERIFICATION_ENABLED:
+
+        print(
+            "\nℹ️ Face verification is disabled."
+        )
+
+        return {
+
+            "status":
+                "NOT_AVAILABLE",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                "Face verification is disabled."
+
+        }
+
+    # ======================================================
+    # CHECK SELFIE
     # ======================================================
 
     if not reference_face:
 
         print(
-            "\nℹ️ No selfie/reference face provided."
+            "\n⚠️ No selfie/reference face supplied."
         )
 
-    else:
+        return {
+
+            "status":
+                "NO_REFERENCE_FACE",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                "No selfie/reference face was provided."
+
+        }
+
+    if not os.path.exists(
+        reference_face
+    ):
 
         print(
-            "\nℹ️ Face verification is temporarily "
-            "disabled on the hosted instance."
+            "\n❌ Reference face not found:"
         )
 
-    result = {
+        print(
+            reference_face
+        )
 
-        "status":
-            "NOT_AVAILABLE",
+        return {
 
-        "similarity_score":
-            None,
+            "status":
+                "ERROR",
 
-        "message":
-            (
-                "Face verification is temporarily "
-                "unavailable on the current hosted instance."
-            )
+            "verified":
+                False,
 
-    }
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                (
+                    "Reference face was not found: "
+                    f"{reference_face}"
+                )
+
+        }
+
+    # ======================================================
+    # CHECK DOCUMENT
+    # ======================================================
+
+    if not document_image:
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                "No document image was provided."
+
+        }
+
+    if not os.path.exists(
+        document_image
+    ):
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                (
+                    "Document image was not found: "
+                    f"{document_image}"
+                )
+
+        }
+
+    # ======================================================
+    # EXTRACT DOCUMENT PORTRAIT
+    # ======================================================
+
+    portrait_result = prepare_document_face(
+
+        document_image
+
+    )
+
+    # ======================================================
+    # VALIDATE RESULT
+    # ======================================================
+
+    if not isinstance(
+        portrait_result,
+        dict
+    ):
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                "Invalid document portrait result."
+
+        }
+
+    # ======================================================
+    # NO DOCUMENT PORTRAIT
+    # ======================================================
+
+    if not portrait_result.get(
+        "face_found",
+        False
+    ):
+
+        print(
+            "\n⚠️ No reliable document portrait found."
+        )
+
+        return {
+
+            "status":
+                "NO_DOCUMENT_FACE",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                (
+                    "No reliable portrait could be "
+                    "detected in the identity document."
+                )
+
+        }
+
+    # ======================================================
+    # DOCUMENT PORTRAIT PATH
+    # ======================================================
+
+    document_face_path = portrait_result.get(
+        "face_path"
+    )
+
+    if not document_face_path:
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                False,
+
+            "document_face_path":
+                None,
+
+            "message":
+                "Portrait extraction returned no file path."
+
+        }
+
+    # ======================================================
+    # NORMALIZE PORTRAIT
+    # ======================================================
+
+    verification_face_path = normalize_document_face(
+
+        document_face_path
+
+    )
+
+    if not verification_face_path:
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                True,
+
+            "document_face_path":
+                document_face_path,
+
+            "message":
+                "Unable to prepare document portrait."
+
+        }
+
+    # ======================================================
+    # LOAD FACE VERIFIER
+    # ======================================================
+
+    try:
+
+        from face.verifier import (
+            verify_faces
+        )
+
+    except Exception as e:
+
+        print(
+            "\n❌ Unable to load face verifier:"
+        )
+
+        print(
+            str(e)
+        )
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                True,
+
+            "document_face_path":
+                verification_face_path,
+
+            "message":
+                (
+                    "Face verifier could not be loaded: "
+                    f"{str(e)}"
+                )
+
+        }
+
+    # ======================================================
+    # DISPLAY COMPARISON
+    # ======================================================
+
+    print(
+        "\n🧠 Preparing face verification..."
+    )
+
+    print(
+        "\nComparing:"
+    )
+
+    print(
+        "  SELFIE"
+    )
+
+    print(
+        "    ↕"
+    )
+
+    print(
+        "  DOCUMENT PORTRAIT"
+    )
+
+    print(
+        "\nModel:",
+        FACE_MODEL
+    )
+
+    print(
+        "Detector:",
+        FACE_DETECTOR
+    )
+
+    # ======================================================
+    # RUN FACE VERIFICATION
+    # ======================================================
+
+    try:
+
+        result = verify_faces(
+
+            reference_face,
+
+            verification_face_path
+
+        )
+
+    except Exception as e:
+
+        print(
+            "\n❌ Face verification failed:"
+        )
+
+        print(
+            str(e)
+        )
+
+        cleanup_memory()
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "document_face_found":
+                True,
+
+            "document_face_path":
+                verification_face_path,
+
+            "message":
+                (
+                    "Face verification failed: "
+                    f"{str(e)}"
+                )
+
+        }
+
+    # ======================================================
+    # VALIDATE RESULT
+    # ======================================================
+
+    if not isinstance(
+        result,
+        dict
+    ):
+
+        result = {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                None,
+
+            "message":
+                "Face verifier returned an invalid result."
+
+        }
+
+    # ======================================================
+    # NORMALIZE STATUS
+    # ======================================================
+
+    if result.get(
+        "verified",
+        False
+    ):
+
+        result["status"] = "MATCH"
+
+    elif result.get(
+        "status"
+    ) not in [
+
+        "ERROR",
+
+        "NO_FACE",
+
+        "NO_MATCH",
+
+        "NO_DOCUMENT_FACE"
+
+    ]:
+
+        result["status"] = "NO_MATCH"
+
+    # ======================================================
+    # ADD DOCUMENT PORTRAIT INFORMATION
+    # ======================================================
+
+    result[
+        "document_face_found"
+    ] = True
+
+    result[
+        "document_face_path"
+    ] = verification_face_path
+
+    # ======================================================
+    # DISPLAY
+    # ======================================================
 
     print_json(
         "FACE VERIFICATION RESULT",
         result
     )
+
+    if result.get(
+        "verified",
+        False
+    ):
+
+        print(
+            "\n✅ FACE MATCH"
+        )
+
+    else:
+
+        print(
+            "\n❌ FACE DOES NOT MATCH"
+        )
 
     cleanup_memory()
 
@@ -982,23 +1931,90 @@ def run_risk_engine(
         "=" * 60
     )
 
+    # ======================================================
+    # LOAD RISK ENGINE
+    # ======================================================
+
     try:
 
         from risk_engine.risk_engine import (
             calculate_risk
         )
 
-        # ==================================================
-        # TRY CURRENT RISK ENGINE
-        # ==================================================
+    except Exception as e:
+
+        print(
+            "\n❌ Unable to load risk engine:"
+        )
+
+        print(
+            str(e)
+        )
+
+        return {
+
+            "risk_score":
+                100,
+
+            "risk_level":
+                "HIGH",
+
+            "decision":
+                "DOCUMENT REJECTED",
+
+            "warnings": [
+
+                (
+                    "Risk engine could not be loaded: "
+                    f"{str(e)}"
+                )
+
+            ],
+
+            "authenticity":
+                authenticity_result,
+
+            "tampering":
+                tampering_result,
+
+            "face_verification":
+                face_result
+
+        }
+
+    # ======================================================
+    # RUN CURRENT RISK ENGINE
+    # ======================================================
+
+    try:
+
+        result = calculate_risk(
+
+            validation_result,
+
+            authenticity_result,
+
+            tampering_result,
+
+            face_result
+
+        )
+
+    except TypeError:
+
+        # --------------------------------------------------
+        # Legacy compatibility
+        # --------------------------------------------------
 
         try:
 
+            print(
+                "\nℹ️ Trying legacy risk engine signature..."
+            )
+
             result = calculate_risk(
 
                 validation_result,
-
-                authenticity_result,
 
                 tampering_result,
 
@@ -1006,30 +2022,46 @@ def run_risk_engine(
 
             )
 
-        # ==================================================
-        # LEGACY RISK ENGINE
-        # ==================================================
-
-        except TypeError:
+        except Exception as e:
 
             print(
-                "\nℹ️ Using legacy risk engine signature..."
+                "\n❌ Risk engine failed:"
             )
 
-            result = calculate_risk(
-
-                validation_result,
-
-                tampering_result,
-
-                face_result
-
+            print(
+                str(e)
             )
+
+            result = {
+
+                "risk_score":
+                    100,
+
+                "risk_level":
+                    "HIGH",
+
+                "decision":
+                    "DOCUMENT REJECTED",
+
+                "warnings": [
+
+                    (
+                        "Risk engine failed: "
+                        f"{str(e)}"
+                    )
+
+                ]
+
+            }
 
     except Exception as e:
 
         print(
-            f"\n❌ Risk engine failed: {e}"
+            "\n❌ Risk engine failed:"
+        )
+
+        print(
+            str(e)
         )
 
         result = {
@@ -1183,7 +2215,7 @@ def display_final_decision(
     )
 
     # ======================================================
-    # BASIC VALUES
+    # BASIC RESULT
     # ======================================================
 
     decision = result.get(
@@ -1217,6 +2249,59 @@ def display_final_decision(
         "RISK SCORE     :",
         risk_score
     )
+
+    # ======================================================
+    # VALIDATION
+    # ======================================================
+
+    checks = result.get(
+        "checks",
+        {}
+    )
+
+    if checks:
+
+        print()
+
+        print(
+            "DOCUMENT CHECKS"
+        )
+
+        print(
+            "-" * 60
+        )
+
+        print(
+            "Validation      :",
+            checks.get(
+                "validation",
+                "UNKNOWN"
+            )
+        )
+
+        print(
+            "Authenticity    :",
+            checks.get(
+                "authenticity",
+                "UNKNOWN"
+            )
+        )
+
+        print(
+            "Tampering       :",
+            checks.get(
+                "tampering",
+                "UNKNOWN"
+            )
+        )
+
+        print(
+            "Face Verification:",
+            checks.get(
+                "face_verification",
+                "UNKNOWN"
+            )
+        )
 
     # ======================================================
     # AUTHENTICITY
@@ -1261,7 +2346,7 @@ def display_final_decision(
         )
 
     # ======================================================
-    # FORENSIC RESULT
+    # TAMPERING
     # ======================================================
 
     tampering = result.get(
@@ -1291,7 +2376,7 @@ def display_final_decision(
         )
 
     # ======================================================
-    # FACE RESULT
+    # FACE
     # ======================================================
 
     face = result.get(
@@ -1320,11 +2405,59 @@ def display_final_decision(
             )
         )
 
+    if face.get(
+        "distance"
+    ) is not None:
+
+        print(
+            "FACE DISTANCE    :",
+            face.get(
+                "distance"
+            )
+        )
+
+    if face.get(
+        "threshold"
+    ) is not None:
+
+        print(
+            "FACE THRESHOLD   :",
+            face.get(
+                "threshold"
+            )
+        )
+
+    if face.get(
+        "document_face_found"
+    ) is not None:
+
+        print(
+            "DOCUMENT PORTRAIT:",
+            face.get(
+                "document_face_found"
+            )
+        )
+
+    if face.get(
+        "document_face_path"
+    ):
+
+        print(
+            "PORTRAIT PATH    :",
+            face.get(
+                "document_face_path"
+            )
+        )
+
     # ======================================================
-    # FINAL MESSAGE
+    # FINAL DECISION MESSAGE
     # ======================================================
 
     print()
+
+    print(
+        "-" * 60
+    )
 
     if decision == "DOCUMENT APPROVED":
 
@@ -1401,7 +2534,7 @@ def run_pipeline(
     )
 
     print(
-        "       IDSHIELD AI - HOSTED PIPELINE"
+        "       IDSHIELD AI - COMPLETE PIPELINE"
     )
 
     print(
@@ -1509,11 +2642,13 @@ def run_pipeline(
     # ======================================================
 
     print(
-        "\n🚀 STARTING VALIDATION"
+        "\n🚀 STARTING DOCUMENT VALIDATION"
     )
 
     validation_result = run_validation(
+
         document_data
+
     )
 
     # ======================================================
@@ -1521,11 +2656,13 @@ def run_pipeline(
     # ======================================================
 
     print(
-        "\n🚀 STARTING AUTHENTICITY"
+        "\n🚀 STARTING AUTHENTICITY VERIFICATION"
     )
 
     authenticity_result = run_authenticity(
+
         document_data
+
     )
 
     # ======================================================
@@ -1537,15 +2674,17 @@ def run_pipeline(
     )
 
     tampering_result = run_tampering(
+
         document_path
+
     )
 
     # ======================================================
-    # STEP 5 - FACE
+    # STEP 5 - FACE VERIFICATION
     # ======================================================
 
     print(
-        "\n🚀 STARTING FACE VERIFICATION"
+        "\n🚀 STARTING DOCUMENT FACE VERIFICATION"
     )
 
     face_result = run_face_verification(
@@ -1585,7 +2724,7 @@ def run_pipeline(
     )
 
     # ======================================================
-    # FINAL CLEANUP
+    # CLEANUP
     # ======================================================
 
     cleanup_memory()
@@ -1660,12 +2799,12 @@ if __name__ == "__main__":
 
         "test_documents",
 
-        "sample_document.jpg"
+        "sample_document_with_face.jpg"
 
     )
 
     # ======================================================
-    # TEST REFERENCE FACE
+    # TEST SELFIE
     # ======================================================
 
     REFERENCE_FACE = os.path.join(
@@ -1681,7 +2820,7 @@ if __name__ == "__main__":
     )
 
     # ======================================================
-    # DISPLAY FILES
+    # DISPLAY TEST FILES
     # ======================================================
 
     print(
@@ -1729,13 +2868,13 @@ if __name__ == "__main__":
         )
 
         print(
-            "Face verification will be skipped."
+            "Face verification will not be possible."
         )
 
         REFERENCE_FACE = None
 
     # ======================================================
-    # RUN PIPELINE
+    # RUN COMPLETE PIPELINE
     # ======================================================
 
     final_result = run_pipeline(
@@ -1747,7 +2886,7 @@ if __name__ == "__main__":
     )
 
     # ======================================================
-    # COMPLETED
+    # FINAL STATUS
     # ======================================================
 
     print(

@@ -5,47 +5,82 @@ function Dashboard() {
   return (
     <div className="dashboard-page">
 
-      {/* HERO */}
+      {/* =====================================================
+          HERO
+      ===================================================== */}
 
       <section className="dashboard-hero">
 
         <div className="dashboard-hero-content">
 
           <div className="eyebrow">
-            <span>✦</span>
+            <span className="eyebrow-dot"></span>
             AI-POWERED IDENTITY SECURITY
           </div>
 
           <h1>
-            Secure identity
+            Verify identities
             <br />
-            verification,
-            <span> reimagined.</span>
+            with <span>confidence.</span>
           </h1>
 
           <p>
-            IDShield AI combines document intelligence,
-            tampering detection and biometric verification
-            to help security teams identify suspicious
-            identities faster.
+            IDShield AI analyzes identity documents through
+            document intelligence, fraud detection and
+            biometric verification — all in one verification flow.
           </p>
 
-          <Link
-            to="/verification"
-            className="primary-button"
-          >
-            Start Verification
-            <span>→</span>
-          </Link>
+          <div className="hero-actions">
+
+            <Link
+              to="/verification"
+              className="primary-button"
+            >
+              Start Verification
+              <span>→</span>
+            </Link>
+
+            <a
+              href="#how-it-works"
+              className="secondary-button"
+            >
+              How it works
+            </a>
+
+          </div>
+
+          <div className="hero-trust">
+
+            <div className="trust-item">
+              <span>✓</span>
+              AI Analysis
+            </div>
+
+            <div className="trust-item">
+              <span>✓</span>
+              Fraud Detection
+            </div>
+
+            <div className="trust-item">
+              <span>✓</span>
+              Face Verification
+            </div>
+
+          </div>
 
         </div>
 
 
-        {/* SECURITY VISUAL */}
+        {/* =================================================
+            SECURITY VISUAL
+        ================================================= */}
 
         <div className="security-visual">
 
           <div className="visual-glow"></div>
+
+          <div className="security-orbit orbit-one"></div>
+          <div className="security-orbit orbit-two"></div>
 
           <div className="shield-large">
 
@@ -57,8 +92,62 @@ function Dashboard() {
 
           </div>
 
-          <div className="visual-label">
-            ✓ AI ENGINE ONLINE
+          <div className="visual-status">
+
+            <span className="status-dot"></span>
+
+            <span>
+              AI ENGINE
+            </span>
+
+            <strong>
+              ONLINE
+            </strong>
+
+          </div>
+
+          <div className="floating-card floating-card-top">
+
+            <span className="floating-icon">
+              ◉
+            </span>
+
+            <div>
+              <strong>
+                Face Match
+              </strong>
+
+              <small>
+                Ready
+              </small>
+            </div>
+
+            <span className="floating-check">
+              ✓
+            </span>
+
+          </div>
+
+          <div className="floating-card floating-card-bottom">
+
+            <span className="floating-icon">
+              ◇
+            </span>
+
+            <div>
+              <strong>
+                Risk Engine
+              </strong>
+
+              <small>
+                Active
+              </small>
+            </div>
+
+            <span className="floating-check">
+              ✓
+            </span>
+
           </div>
 
         </div>
@@ -66,89 +155,65 @@ function Dashboard() {
       </section>
 
 
-      {/* STATS */}
+      {/* =====================================================
+          QUICK STATS
+      ===================================================== */}
 
       <section className="stats-grid">
 
-        <div className="stat-card">
+        <StatCard
+          icon="✓"
+          value="4"
+          label="Security Layers"
+        />
 
-          <div className="stat-icon">
-            ✓
-          </div>
+        <StatCard
+          icon="⚡"
+          value="Fast"
+          label="Automated Analysis"
+        />
 
-          <div>
-            <strong>4</strong>
-            <span>AI Security Layers</span>
-          </div>
+        <StatCard
+          icon="◈"
+          value="AI"
+          label="Risk Assessment"
+        />
 
-        </div>
-
-
-        <div className="stat-card">
-
-          <div className="stat-icon">
-            ⚡
-          </div>
-
-          <div>
-            <strong>Seconds</strong>
-            <span>Automated Screening</span>
-          </div>
-
-        </div>
-
-
-        <div className="stat-card">
-
-          <div className="stat-icon">
-            ◇
-          </div>
-
-          <div>
-            <strong>AI</strong>
-            <span>Risk Assessment</span>
-          </div>
-
-        </div>
-
-
-        <div className="stat-card">
-
-          <div className="stat-icon">
-            🔒
-          </div>
-
-          <div>
-            <strong>Secure</strong>
-            <span>Verification Processing</span>
-          </div>
-
-        </div>
+        <StatCard
+          icon="🔒"
+          value="Secure"
+          label="Document Processing"
+        />
 
       </section>
 
 
-      {/* HOW IT WORKS */}
+      {/* =====================================================
+          HOW IT WORKS
+      ===================================================== */}
 
-      <section className="dashboard-section">
+      <section
+        className="dashboard-section"
+        id="how-it-works"
+      >
 
         <div className="section-heading">
 
           <div>
 
             <span className="mini-label">
-              HOW IT WORKS
+              VERIFICATION FLOW
             </span>
 
             <h2>
-              One verification. Multiple checks.
+              From document to decision.
             </h2>
 
           </div>
 
           <p>
-            IDShield analyzes identity information through
-            multiple independent security layers.
+            A simple verification process powered by
+            multiple AI-driven security checks.
           </p>
 
         </div>
@@ -159,8 +224,8 @@ function Dashboard() {
           <Workflow
             number="01"
             icon="▤"
-            title="Upload"
-            text="Submit the identity document and face photo."
+            title="Submit"
+            text="Upload your identity document and selfie."
           />
 
           <div className="workflow-line"></div>
@@ -169,7 +234,7 @@ function Dashboard() {
             number="02"
             icon="⌕"
             title="Analyze"
-            text="AI extracts and analyzes identity information."
+            text="AI extracts and analyzes the submitted information."
           />
 
           <div className="workflow-line"></div>
@@ -178,7 +243,7 @@ function Dashboard() {
             number="03"
             icon="✓"
             title="Verify"
-            text="Multiple security checks verify the identity."
+            text="Identity, authenticity and document signals are checked."
           />
 
           <div className="workflow-line"></div>
@@ -187,7 +252,7 @@ function Dashboard() {
             number="04"
             icon="◆"
             title="Decide"
-            text="Risk engine produces the final decision."
+            text="The risk engine generates the final verification decision."
           />
 
         </div>
@@ -195,7 +260,9 @@ function Dashboard() {
       </section>
 
 
-      {/* CAPABILITIES */}
+      {/* =====================================================
+          SECURITY LAYERS
+      ===================================================== */}
 
       <section className="dashboard-section">
 
@@ -204,14 +271,19 @@ function Dashboard() {
           <div>
 
             <span className="mini-label">
-              VERIFICATION ENGINE
+              IDSHIELD AI ENGINE
             </span>
 
             <h2>
-              Four layers of protection
+              Multiple layers. One decision.
             </h2>
 
           </div>
+
+          <p>
+            Each layer contributes signals that help
+            build a stronger verification result.
+          </p>
 
         </div>
 
@@ -229,21 +301,21 @@ function Dashboard() {
             number="02"
             icon="✓"
             title="Validation"
-            text="Check required fields, dates and document information."
+            text="Check document fields, formats and required identity information."
           />
 
           <Capability
             number="03"
             icon="⌁"
             title="Tampering Detection"
-            text="Detect suspicious visual modifications in documents."
+            text="Analyze documents for suspicious visual or forensic anomalies."
           />
 
           <Capability
             number="04"
             icon="◉"
             title="Face Verification"
-            text="Compare the submitted face against the identity document."
+            text="Compare the submitted selfie with the document portrait."
           />
 
         </div>
@@ -251,25 +323,29 @@ function Dashboard() {
       </section>
 
 
-      {/* CTA */}
+      {/* =====================================================
+          CTA
+      ===================================================== */}
 
       <section className="dashboard-cta">
 
-        <div>
+        <div className="cta-content">
 
           <span className="mini-label">
             READY TO VERIFY?
           </span>
 
           <h2>
-            Start a secure identity verification.
+            Verify an identity in a few simple steps.
           </h2>
 
           <p>
-            Upload your documents and let IDShield AI analyze them.
+            Upload your document and selfie,
+            then let IDShield AI handle the analysis.
           </p>
 
         </div>
+
 
         <Link
           to="/verification"
@@ -286,7 +362,43 @@ function Dashboard() {
 }
 
 
-/* WORKFLOW COMPONENT */
+/* ==========================================================
+   STAT CARD
+========================================================== */
+
+function StatCard({
+  icon,
+  value,
+  label
+}) {
+
+  return (
+    <div className="stat-card">
+
+      <div className="stat-icon">
+        {icon}
+      </div>
+
+      <div className="stat-content">
+
+        <strong>
+          {value}
+        </strong>
+
+        <span>
+          {label}
+        </span>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+/* ==========================================================
+   WORKFLOW
+========================================================== */
 
 function Workflow({
   number,
@@ -319,7 +431,9 @@ function Workflow({
 }
 
 
-/* CAPABILITY COMPONENT */
+/* ==========================================================
+   CAPABILITY
+========================================================== */
 
 function Capability({
   number,
@@ -346,6 +460,10 @@ function Capability({
       <p>
         {text}
       </p>
+
+      <div className="capability-arrow">
+        →
+      </div>
 
     </div>
   );

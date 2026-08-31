@@ -13,22 +13,34 @@ import gc
 # 1. OCR
 # 2. Document Validation
 # 3. Authority / Authenticity
-# 4. Forensic Analysis      -> disabled on free hosted instance
-# 5. Face Verification      -> disabled on free hosted instance
+# 4. Forensic / Tampering Analysis
+# 5. Face Verification
 # 6. Risk Engine
 # 7. Final Decision
 #
+# Hosted configuration:
+#
+# OCR             -> ENABLED
+# Validation      -> ENABLED
+# Authenticity    -> ENABLED
+# Tampering       -> ENABLED
+# Face            -> DISABLED
+#
+# Face verification is temporarily disabled because the
+# current hosted instance has limited RAM.
+#
 # ==========================================================
 
 
 # ==========================================================
+# PADDLEOCR CONFIGURATION
+# ==========================================================
+#
 # IMPORTANT:
-# DISABLE PADDLEOCR oneDNN / MKLDNN
-# ==========================================================
+# This must be configured BEFORE PaddleOCR/PaddlePaddle
+# is imported.
 #
-# This must happen BEFORE importing PaddleOCR/PaddlePaddle.
-#
-# It prevents errors such as:
+# This prevents oneDNN / MKLDNN related errors such as:
 #
 # ConvertPirAttribute2RuntimeAttribute not support
 # [pir::ArrayAttribute<pir::DoubleAttribute>]
@@ -65,14 +77,14 @@ def get_ocr():
     """
     Initialize PaddleOCR only when required.
 
-    The model is reused for subsequent requests so that
-    the application does not repeatedly load the OCR model.
+    The OCR model is loaded lazily and reused between
+    requests to reduce memory usage.
     """
 
     global _ocr_instance
 
     # ------------------------------------------------------
-    # Reuse existing model
+    # Reuse existing OCR instance
     # ------------------------------------------------------
 
     if _ocr_instance is not None:
@@ -99,8 +111,7 @@ def get_ocr():
 
             lang="en",
 
-            # IMPORTANT:
-            # Disable MKLDNN / oneDNN
+            # Disable oneDNN / MKLDNN
             enable_mkldnn=False
 
         )
@@ -114,7 +125,11 @@ def get_ocr():
     except Exception as e:
 
         print(
-            f"❌ PaddleOCR initialization failed: {e}"
+            "\n❌ PaddleOCR initialization failed:"
+        )
+
+        print(
+            str(e)
         )
 
         raise
@@ -208,7 +223,7 @@ def run_ocr(
     )
 
     # ======================================================
-    # VALIDATE DOCUMENT PATH
+    # VALIDATE DOCUMENT
     # ======================================================
 
     if not document_path:
@@ -322,7 +337,7 @@ def run_ocr(
                 data = res.json
 
                 # Some PaddleOCR versions expose
-                # json as a method.
+                # json as a callable.
                 if callable(data):
 
                     data = data()
@@ -452,7 +467,7 @@ def run_ocr(
     )
 
     # ======================================================
-    # CLEANUP
+    # MEMORY CLEANUP
     # ======================================================
 
     cleanup_memory()
@@ -518,7 +533,7 @@ def run_validation(
         }
 
     # ======================================================
-    # DISPLAY RESULT
+    # DISPLAY
     # ======================================================
 
     print_json(
@@ -627,7 +642,7 @@ def run_authenticity(
         }
 
     # ======================================================
-    # DISPLAY RESULT
+    # DISPLAY
     # ======================================================
 
     print_json(
@@ -683,7 +698,7 @@ def run_authenticity(
 
 
 # ==========================================================
-# STEP 4 - DOCUMENT FORENSIC ANALYSIS
+# STEP 4 - DOCUMENT FORENSIC / TAMPERING ANALYSIS
 # ==========================================================
 
 def run_tampering(
@@ -707,7 +722,7 @@ def run_tampering(
     )
 
     # ======================================================
-    # CHECK PATH
+    # CHECK DOCUMENT
     # ======================================================
 
     if not submitted_path:
@@ -743,38 +758,128 @@ def run_tampering(
         }
 
     # ======================================================
-    # HOSTED VERSION
-    # ======================================================
-    #
-    # Heavy forensic models are intentionally disabled
-    # for the current low-memory hosted environment.
-    #
+    # RUN FORENSIC DETECTOR
     # ======================================================
 
     print(
-        "\nℹ️ Forensic analysis disabled on current hosted instance."
+        "\n🔍 Running forensic tampering analysis..."
     )
 
-    result = {
+    print(
+        "Please wait...\n"
+    )
 
-        "status":
-            "NOT_AVAILABLE",
+    try:
 
-        "tampering_score":
-            None,
+        # Lazy import to avoid loading the detector
+        # until it is actually required.
 
-        "message":
-            (
-                "Forensic analysis is unavailable "
-                "on the current hosted instance."
-            )
+        from tampering.detector import (
+            analyze_document
+        )
 
-    }
+        result = analyze_document(
+            submitted_path
+        )
+
+    except Exception as e:
+
+        print(
+            "\n⚠️ Tampering detector failed:"
+        )
+
+        print(
+            str(e)
+        )
+
+        result = {
+
+            "status":
+                "ERROR",
+
+            "tampering_score":
+                None,
+
+            "message":
+                (
+                    "Forensic analysis failed: "
+                    f"{str(e)}"
+                )
+
+        }
+
+    # ======================================================
+    # MAKE SURE RESULT IS A DICTIONARY
+    # ======================================================
+
+    if not isinstance(
+        result,
+        dict
+    ):
+
+        result = {
+
+            "status":
+                "ERROR",
+
+            "tampering_score":
+                None,
+
+            "message":
+                "Tampering detector returned an invalid result."
+
+        }
+
+    # ======================================================
+    # DISPLAY
+    # ======================================================
 
     print_json(
         "FORENSIC ANALYSIS RESULT",
         result
     )
+
+    # ======================================================
+    # DECISION
+    # ======================================================
+
+    if result.get(
+        "status"
+    ) == "PASS":
+
+        print(
+            "\n✅ NO OBVIOUS FORENSIC ANOMALIES"
+        )
+
+    elif result.get(
+        "status"
+    ) == "REVIEW":
+
+        print(
+            "\n⚠️ DOCUMENT REQUIRES FORENSIC REVIEW"
+        )
+
+    elif result.get(
+        "status"
+    ) == "FLAGGED":
+
+        print(
+            "\n❌ DOCUMENT FORENSIC CHECK FLAGGED"
+        )
+
+    elif result.get(
+        "status"
+    ) == "ERROR":
+
+        print(
+            "\n⚠️ FORENSIC ANALYSIS FAILED"
+        )
+
+    else:
+
+        print(
+            "\n⚠️ UNKNOWN FORENSIC RESULT"
+        )
 
     cleanup_memory()
 
@@ -803,11 +908,15 @@ def run_face_verification(
     )
 
     # ======================================================
-    # HOSTED VERSION
+    # TEMPORARILY DISABLED
     # ======================================================
     #
-    # Face verification is intentionally disabled for the
-    # current low-memory hosted environment.
+    # We keep this disabled on the current low-memory
+    # hosted instance.
+    #
+    # The function remains in the pipeline so that face
+    # verification can be enabled later without changing
+    # the API structure.
     #
     # ======================================================
 
@@ -820,8 +929,8 @@ def run_face_verification(
     else:
 
         print(
-            "\nℹ️ Face verification disabled "
-            "on current hosted instance."
+            "\nℹ️ Face verification is temporarily "
+            "disabled on the hosted instance."
         )
 
     result = {
@@ -834,8 +943,8 @@ def run_face_verification(
 
         "message":
             (
-                "Face verification is unavailable "
-                "on the current hosted instance."
+                "Face verification is temporarily "
+                "unavailable on the current hosted instance."
             )
 
     }
@@ -873,19 +982,15 @@ def run_risk_engine(
         "=" * 60
     )
 
-    # ======================================================
-    # IMPORT RISK ENGINE
-    # ======================================================
-
     try:
 
         from risk_engine.risk_engine import (
             calculate_risk
         )
 
-        # --------------------------------------------------
-        # New risk engine
-        # --------------------------------------------------
+        # ==================================================
+        # TRY CURRENT RISK ENGINE
+        # ==================================================
 
         try:
 
@@ -901,9 +1006,9 @@ def run_risk_engine(
 
             )
 
-        # --------------------------------------------------
-        # Older risk engine compatibility
-        # --------------------------------------------------
+        # ==================================================
+        # LEGACY RISK ENGINE
+        # ==================================================
 
         except TypeError:
 
@@ -978,7 +1083,7 @@ def run_risk_engine(
         }
 
     # ======================================================
-    # MAKE SURE RESULT IS A DICTIONARY
+    # VALIDATE RESULT
     # ======================================================
 
     if not isinstance(
@@ -1156,7 +1261,7 @@ def display_final_decision(
         )
 
     # ======================================================
-    # FORENSIC
+    # FORENSIC RESULT
     # ======================================================
 
     tampering = result.get(
@@ -1186,7 +1291,7 @@ def display_final_decision(
         )
 
     # ======================================================
-    # FACE
+    # FACE RESULT
     # ======================================================
 
     face = result.get(
@@ -1304,7 +1409,7 @@ def run_pipeline(
     )
 
     # ======================================================
-    # VALIDATE DOCUMENT
+    # INPUT VALIDATION
     # ======================================================
 
     if not document_path:
@@ -1424,11 +1529,11 @@ def run_pipeline(
     )
 
     # ======================================================
-    # STEP 4 - FORENSIC ANALYSIS
+    # STEP 4 - TAMPERING
     # ======================================================
 
     print(
-        "\n🚀 STARTING FORENSIC ANALYSIS"
+        "\n🚀 STARTING TAMPERING DETECTION"
     )
 
     tampering_result = run_tampering(
@@ -1436,7 +1541,7 @@ def run_pipeline(
     )
 
     # ======================================================
-    # STEP 5 - FACE VERIFICATION
+    # STEP 5 - FACE
     # ======================================================
 
     print(
@@ -1480,7 +1585,7 @@ def run_pipeline(
     )
 
     # ======================================================
-    # CLEANUP
+    # FINAL CLEANUP
     # ======================================================
 
     cleanup_memory()

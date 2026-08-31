@@ -1,33 +1,39 @@
 import os
 import gc
+import cv2
+import numpy as np
 
 
 # ==========================================================
-# IDShield AI - FACE VERIFICATION
+# IDShield AI - LIGHTWEIGHT FACE VERIFIER
 # ==========================================================
 #
 # Purpose:
-#
 #   Compare:
 #
-#       SELFIE / REFERENCE FACE
-#                 ↕
-#             ArcFace
-#                 ↕
+#       SELFIE
+#          VS
 #       DOCUMENT PORTRAIT
+#
+#
+# This version intentionally DOES NOT use:
+#
+#   ❌ DeepFace
+#   ❌ RetinaFace
+#   ❌ ArcFace
+#
+# It uses:
+#
+#   OpenCV Haar Cascade
+#       +
+#   lightweight image feature comparison
 #
 #
 # IMPORTANT:
 #
-# This module expects the second image to already contain
-# the portrait extracted from the identity document.
-#
-# Document portrait extraction is handled separately by:
-#
-#     face/document_face.py
-#
-# This prevents the detector from incorrectly rejecting a
-# small portrait crop as a "full document".
+# This is a lightweight prototype verifier.
+# It is NOT equivalent to a production-grade biometric
+# verification system such as ArcFace.
 #
 # ==========================================================
 
@@ -36,9 +42,16 @@ import gc
 # CONFIGURATION
 # ==========================================================
 
-FACE_MODEL = "ArcFace"
+MIN_IMAGE_SIZE = 80
 
-FACE_DETECTOR = "retinaface"
+MIN_FACE_SIZE = 30
+
+# Similarity threshold.
+#
+# Increase this for stricter matching.
+# Decrease this if genuine matches are being rejected.
+#
+SIMILARITY_THRESHOLD = 0.55
 
 
 # ==========================================================
@@ -57,161 +70,12 @@ def cleanup_memory():
 
 
 # ==========================================================
-# VALIDATE IMAGE
+# LOAD FACE DETECTOR
 # ==========================================================
 
-def validate_image(
-    image_path,
-    image_label
-):
-
-    # ------------------------------------------------------
-    # Path check
-    # ------------------------------------------------------
-
-    if not image_path:
-
-        return {
-
-            "valid": False,
-
-            "message":
-                f"{image_label} was not provided."
-
-        }
-
-    # ------------------------------------------------------
-    # File existence
-    # ------------------------------------------------------
-
-    if not os.path.exists(image_path):
-
-        return {
-
-            "valid": False,
-
-            "message":
-                (
-                    f"{image_label} was not found: "
-                    f"{image_path}"
-                )
-
-        }
-
-    # ------------------------------------------------------
-    # OpenCV validation
-    # ------------------------------------------------------
+def load_face_detector():
 
     try:
-
-        import cv2
-
-        image = cv2.imread(
-            image_path
-        )
-
-        if image is None:
-
-            return {
-
-                "valid": False,
-
-                "message":
-                    (
-                        f"{image_label} could not "
-                        "be read as an image."
-                    )
-
-            }
-
-        height, width = image.shape[:2]
-
-        del image
-
-        cleanup_memory()
-
-        # --------------------------------------------------
-        # Minimum image size
-        # --------------------------------------------------
-
-        if width < 50 or height < 50:
-
-            return {
-
-                "valid": False,
-
-                "message":
-                    (
-                        f"{image_label} is too small "
-                        "for face verification."
-                    )
-
-            }
-
-        return {
-
-            "valid": True,
-
-            "width": width,
-
-            "height": height,
-
-            "message":
-                "Image is valid."
-
-        }
-
-    except Exception as e:
-
-        return {
-
-            "valid": False,
-
-            "message":
-                (
-                    f"{image_label} validation failed: "
-                    f"{str(e)}"
-                )
-
-        }
-
-
-# ==========================================================
-# LIGHTWEIGHT FACE CHECK
-# ==========================================================
-
-def contains_face(
-    image_path
-):
-
-    """
-    Lightweight OpenCV face existence check.
-
-    This is used only as a basic sanity check.
-
-    IMPORTANT:
-    We do NOT apply the full-document area rejection here.
-
-    A document portrait crop can legitimately contain a face
-    occupying a large percentage of the image.
-    """
-
-    try:
-
-        import cv2
-
-        image = cv2.imread(
-            image_path
-        )
-
-        if image is None:
-
-            return False
-
-        gray = cv2.cvtColor(
-            image,
-            cv2.COLOR_BGR2GRAY
-        )
 
         cascade_path = (
 
@@ -227,63 +91,18 @@ def contains_face(
 
         if detector.empty():
 
-            del gray
-            del image
+            print(
+                "\n❌ OpenCV face detector could not be loaded."
+            )
 
-            cleanup_memory()
+            return None
 
-            return False
-
-        faces = detector.detectMultiScale(
-
-            gray,
-
-            scaleFactor=1.1,
-
-            minNeighbors=4,
-
-            minSize=(30, 30)
-
-        )
-
-        del gray
-        del image
-
-        cleanup_memory()
-
-        return len(faces) > 0
-
-    except Exception:
-
-        cleanup_memory()
-
-        return False
-
-
-# ==========================================================
-# LOAD DEEPFACE
-# ==========================================================
-
-def load_deepface():
-
-    print(
-        "\n🔄 Loading DeepFace..."
-    )
-
-    try:
-
-        from deepface import DeepFace
-
-        print(
-            "✅ DeepFace loaded."
-        )
-
-        return DeepFace
+        return detector
 
     except Exception as e:
 
         print(
-            "\n❌ DeepFace import failed:"
+            "\n❌ Face detector loading failed:"
         )
 
         print(
@@ -294,85 +113,718 @@ def load_deepface():
 
 
 # ==========================================================
-# CALCULATE PRESENTATION SIMILARITY
+# LOAD IMAGE
 # ==========================================================
 
-def calculate_similarity(
-    distance,
-    threshold
+def load_image(image_path):
+
+    if not image_path:
+
+        return None
+
+
+    if not os.path.exists(
+        image_path
+    ):
+
+        print(
+            f"\n❌ Image not found: {image_path}"
+        )
+
+        return None
+
+
+    image = cv2.imread(
+        image_path
+    )
+
+
+    if image is None:
+
+        print(
+            f"\n❌ Unable to read image: {image_path}"
+        )
+
+        return None
+
+
+    height, width = image.shape[:2]
+
+
+    if (
+
+        width < MIN_IMAGE_SIZE
+
+        or
+
+        height < MIN_IMAGE_SIZE
+
+    ):
+
+        print(
+            f"\n⚠️ Image is too small: "
+            f"{width} x {height}"
+        )
+
+        return None
+
+
+    return image
+
+
+# ==========================================================
+# DETECT FACE
+# ==========================================================
+
+def detect_best_face(
+    image
 ):
 
-    if distance is None:
+    detector = load_face_detector()
+
+
+    if detector is None:
 
         return None
 
-    if threshold is None:
-
-        return None
 
     try:
 
-        distance = float(
-            distance
+        gray = cv2.cvtColor(
+
+            image,
+
+            cv2.COLOR_BGR2GRAY
+
         )
 
-        threshold = float(
-            threshold
+
+        gray = cv2.equalizeHist(
+            gray
         )
 
-    except (
-        TypeError,
-        ValueError
-    ):
+
+        faces = detector.detectMultiScale(
+
+            gray,
+
+            scaleFactor=1.08,
+
+            minNeighbors=5,
+
+            minSize=(
+                MIN_FACE_SIZE,
+                MIN_FACE_SIZE
+            )
+
+        )
+
+
+        del gray
+
+
+        if len(faces) == 0:
+
+            return None
+
+
+        # --------------------------------------------------
+        # Select largest face
+        # --------------------------------------------------
+
+        best_face = max(
+
+            faces,
+
+            key=lambda box:
+                box[2] * box[3]
+
+        )
+
+
+        x, y, w, h = best_face
+
+
+        return {
+
+            "x": int(x),
+
+            "y": int(y),
+
+            "w": int(w),
+
+            "h": int(h)
+
+        }
+
+
+    except Exception as e:
+
+        print(
+            "\n⚠️ Face detection failed:"
+        )
+
+        print(
+            str(e)
+        )
 
         return None
 
-    if threshold <= 0:
+
+# ==========================================================
+# CROP FACE
+# ==========================================================
+
+def crop_face(
+    image,
+    face
+):
+
+    if face is None:
 
         return None
 
+
+    height, width = image.shape[:2]
+
+
+    x = face["x"]
+
+    y = face["y"]
+
+    w = face["w"]
+
+    h = face["h"]
+
+
     # ------------------------------------------------------
-    # IMPORTANT
-    #
-    # This is only a presentation score.
-    #
-    # It is NOT a probability.
+    # Padding
     # ------------------------------------------------------
 
-    similarity = (
+    padding_x = int(
+        w * 0.20
+    )
 
-        1
-        -
-        (
-            distance / threshold
-        )
+    padding_y = int(
+        h * 0.20
+    )
 
-    ) * 100
 
-    similarity = max(
+    x1 = max(
 
         0,
 
+        x - padding_x
+
+    )
+
+
+    y1 = max(
+
+        0,
+
+        y - padding_y
+
+    )
+
+
+    x2 = min(
+
+        width,
+
+        x + w + padding_x
+
+    )
+
+
+    y2 = min(
+
+        height,
+
+        y + h + padding_y
+
+    )
+
+
+    crop = image[
+
+        y1:y2,
+
+        x1:x2
+
+    ]
+
+
+    if crop is None:
+
+        return None
+
+
+    if crop.size == 0:
+
+        return None
+
+
+    return crop
+
+
+# ==========================================================
+# NORMALIZE FACE
+# ==========================================================
+
+def normalize_face(
+    face
+):
+
+    if face is None:
+
+        return None
+
+
+    try:
+
+        # --------------------------------------------------
+        # Convert to grayscale
+        # --------------------------------------------------
+
+        gray = cv2.cvtColor(
+
+            face,
+
+            cv2.COLOR_BGR2GRAY
+
+        )
+
+
+        # --------------------------------------------------
+        # Resize
+        # --------------------------------------------------
+
+        gray = cv2.resize(
+
+            gray,
+
+            (128, 128),
+
+            interpolation=cv2.INTER_AREA
+
+        )
+
+
+        # --------------------------------------------------
+        # Histogram equalization
+        # --------------------------------------------------
+
+        gray = cv2.equalizeHist(
+            gray
+        )
+
+
+        # --------------------------------------------------
+        # Blur slightly to reduce noise
+        # --------------------------------------------------
+
+        gray = cv2.GaussianBlur(
+
+            gray,
+
+            (3, 3),
+
+            0
+
+        )
+
+
+        return gray
+
+
+    except Exception as e:
+
+        print(
+            "\n⚠️ Face normalization failed:"
+        )
+
+        print(
+            str(e)
+        )
+
+        return None
+
+
+# ==========================================================
+# HISTOGRAM SIMILARITY
+# ==========================================================
+
+def histogram_similarity(
+    image1,
+    image2
+):
+
+    try:
+
+        hist1 = cv2.calcHist(
+
+            [image1],
+
+            [0],
+
+            None,
+
+            [64],
+
+            [0, 256]
+
+        )
+
+
+        hist2 = cv2.calcHist(
+
+            [image2],
+
+            [0],
+
+            None,
+
+            [64],
+
+            [0, 256]
+
+        )
+
+
+        cv2.normalize(
+
+            hist1,
+
+            hist1
+
+        )
+
+
+        cv2.normalize(
+
+            hist2,
+
+            hist2
+
+        )
+
+
+        correlation = cv2.compareHist(
+
+            hist1,
+
+            hist2,
+
+            cv2.HISTCMP_CORREL
+
+        )
+
+
+        # Convert [-1, 1] → [0, 1]
+
+        similarity = (
+
+            correlation + 1
+        ) / 2
+
+
+        return float(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    similarity
+                )
+            )
+        )
+
+
+    except Exception:
+
+        return 0.0
+
+
+# ==========================================================
+# STRUCTURAL SIMILARITY
+# ==========================================================
+
+def structural_similarity(
+    image1,
+    image2
+):
+
+    try:
+
+        # --------------------------------------------------
+        # Normalize pixel values
+        # --------------------------------------------------
+
+        a = image1.astype(
+            np.float32
+        ) / 255.0
+
+
+        b = image2.astype(
+            np.float32
+        ) / 255.0
+
+
+        # --------------------------------------------------
+        # Mean squared error
+        # --------------------------------------------------
+
+        mse = np.mean(
+
+            (a - b) ** 2
+
+        )
+
+
+        # --------------------------------------------------
+        # Convert MSE to similarity
+        # --------------------------------------------------
+
+        similarity = 1.0 - mse
+
+
+        return float(
+
+            max(
+
+                0.0,
+
+                min(
+
+                    1.0,
+
+                    similarity
+
+                )
+
+            )
+
+        )
+
+
+    except Exception:
+
+        return 0.0
+
+
+# ==========================================================
+# EDGE SIMILARITY
+# ==========================================================
+
+def edge_similarity(
+    image1,
+    image2
+):
+
+    try:
+
+        edges1 = cv2.Canny(
+
+            image1,
+
+            50,
+
+            150
+
+        )
+
+
+        edges2 = cv2.Canny(
+
+            image2,
+
+            50,
+
+            150
+
+        )
+
+
+        # --------------------------------------------------
+        # Convert to float
+        # --------------------------------------------------
+
+        a = edges1.astype(
+            np.float32
+        ) / 255.0
+
+
+        b = edges2.astype(
+            np.float32
+        ) / 255.0
+
+
+        difference = np.mean(
+
+            np.abs(
+                a - b
+            )
+
+        )
+
+
+        similarity = (
+
+            1.0 - difference
+
+        )
+
+
+        return float(
+
+            max(
+
+                0.0,
+
+                min(
+
+                    1.0,
+
+                    similarity
+
+                )
+
+            )
+
+        )
+
+
+    except Exception:
+
+        return 0.0
+
+
+# ==========================================================
+# COMPARE FACES
+# ==========================================================
+
+def compare_faces(
+    reference_face,
+    document_face
+):
+
+    # ------------------------------------------------------
+    # Histogram
+    # ------------------------------------------------------
+
+    histogram_score = (
+        histogram_similarity(
+            reference_face,
+            document_face
+        )
+    )
+
+
+    # ------------------------------------------------------
+    # Structural
+    # ------------------------------------------------------
+
+    structural_score = (
+        structural_similarity(
+            reference_face,
+            document_face
+        )
+    )
+
+
+    # ------------------------------------------------------
+    # Edge
+    # ------------------------------------------------------
+
+    edge_score = (
+        edge_similarity(
+            reference_face,
+            document_face
+        )
+    )
+
+
+    # ======================================================
+    # COMBINED SCORE
+    # ======================================================
+    #
+    # Histogram:
+    #     30%
+    #
+    # Structural:
+    #     50%
+    #
+    # Edge:
+    #     20%
+    #
+    # ======================================================
+
+    similarity = (
+
+        histogram_score * 0.30
+
+        +
+
+        structural_score * 0.50
+
+        +
+
+        edge_score * 0.20
+
+    )
+
+
+    similarity = max(
+
+        0.0,
+
         min(
-            100,
+
+            1.0,
+
             similarity
+
         )
 
     )
 
-    return round(
-        similarity,
-        2
-    )
+
+    return {
+
+        "similarity_score":
+            round(
+                similarity,
+                4
+            ),
+
+        "histogram_score":
+            round(
+                histogram_score,
+                4
+            ),
+
+        "structural_score":
+            round(
+                structural_score,
+                4
+            ),
+
+        "edge_score":
+            round(
+                edge_score,
+                4
+            )
+
+    }
 
 
 # ==========================================================
-# FACE VERIFICATION
+# VERIFY FACES
 # ==========================================================
 
 def verify_faces(
-    reference_face,
-    document_portrait
+    reference_image_path,
+    document_image_path
 ):
 
     print(
@@ -381,30 +833,46 @@ def verify_faces(
     )
 
     print(
-        "IDSHIELD AI - FACE VERIFICATION"
+        "IDSHIELD AI - LIGHTWEIGHT FACE VERIFICATION"
     )
 
     print(
         "=" * 60
     )
 
+
     # ======================================================
-    # STEP 1 - VALIDATE SELFIE
+    # VALIDATE REFERENCE
     # ======================================================
 
-    print(
-        "\n🔎 Checking reference/selfie image..."
-    )
+    if not reference_image_path:
 
-    reference_check = validate_image(
+        return {
 
-        reference_face,
+            "status":
+                "NO_REFERENCE_FACE",
 
-        "Reference face"
+            "verified":
+                False,
 
-    )
+            "similarity_score":
+                None,
 
-    if not reference_check["valid"]:
+            "distance":
+                None,
+
+            "threshold":
+                SIMILARITY_THRESHOLD,
+
+            "message":
+                "No reference selfie was provided."
+
+        }
+
+
+    if not os.path.exists(
+        reference_image_path
+    ):
 
         return {
 
@@ -421,46 +889,46 @@ def verify_faces(
                 None,
 
             "threshold":
-                None,
-
-            "model":
-                FACE_MODEL,
-
-            "detector":
-                FACE_DETECTOR,
-
-            "document_face_found":
-                False,
-
-            "document_face_path":
-                document_portrait,
+                SIMILARITY_THRESHOLD,
 
             "message":
-                reference_check["message"]
+                "Reference selfie was not found."
 
         }
 
-    print(
-        "✅ Reference image is valid."
-    )
 
     # ======================================================
-    # STEP 2 - VALIDATE DOCUMENT PORTRAIT
+    # VALIDATE DOCUMENT PORTRAIT
     # ======================================================
 
-    print(
-        "\n🔎 Checking document portrait..."
-    )
+    if not document_image_path:
 
-    portrait_check = validate_image(
+        return {
 
-        document_portrait,
+            "status":
+                "NO_DOCUMENT_FACE",
 
-        "Document portrait"
+            "verified":
+                False,
 
-    )
+            "similarity_score":
+                None,
 
-    if not portrait_check["valid"]:
+            "distance":
+                None,
+
+            "threshold":
+                SIMILARITY_THRESHOLD,
+
+            "message":
+                "Document portrait was not provided."
+
+        }
+
+
+    if not os.path.exists(
+        document_image_path
+    ):
 
         return {
 
@@ -477,223 +945,35 @@ def verify_faces(
                 None,
 
             "threshold":
-                None,
-
-            "model":
-                FACE_MODEL,
-
-            "detector":
-                FACE_DETECTOR,
-
-            "document_face_found":
-                False,
-
-            "document_face_path":
-                document_portrait,
+                SIMILARITY_THRESHOLD,
 
             "message":
-                portrait_check["message"]
+                "Document portrait was not found."
 
         }
 
-    print(
-        "✅ Document portrait is valid."
-    )
-
-    print(
-        "\n📐 Reference image size:"
-        f" {reference_check['width']} x "
-        f"{reference_check['height']}"
-    )
-
-    print(
-        "📐 Document portrait size:"
-        f" {portrait_check['width']} x "
-        f"{portrait_check['height']}"
-    )
 
     # ======================================================
-    # STEP 3 - BASIC FACE CHECK
+    # LOAD IMAGES
     # ======================================================
 
     print(
-        "\n🔎 Checking face in reference image..."
+        "\n📷 Loading selfie..."
     )
 
-    reference_has_face = contains_face(
-        reference_face
+
+    reference_image = load_image(
+
+        reference_image_path
+
     )
 
-    if not reference_has_face:
 
-        print(
-            "❌ No face detected in reference image."
-        )
-
-        return {
-
-            "status":
-                "NO_FACE",
-
-            "verified":
-                False,
-
-            "similarity_score":
-                None,
-
-            "distance":
-                None,
-
-            "threshold":
-                None,
-
-            "model":
-                FACE_MODEL,
-
-            "detector":
-                FACE_DETECTOR,
-
-            "document_face_found":
-                False,
-
-            "document_face_path":
-                document_portrait,
-
-            "message":
-                (
-                    "No face detected in "
-                    "reference/selfie image."
-                )
-
-        }
-
-    print(
-        "✅ Face detected in reference image."
-    )
-
-    # ======================================================
-    # DOCUMENT PORTRAIT
-    # ======================================================
-    #
-    # IMPORTANT:
-    #
-    # We DO NOT use the old full-document filtering logic.
-    #
-    # The document portrait has already been extracted by:
-    #
-    #     document_face.py
-    #
-    # Therefore the face is allowed to occupy a large
-    # percentage of this image.
-    #
-    # ======================================================
-
-    print(
-        "\n🖼️ Using previously extracted document portrait..."
-    )
-
-    print(
-        "Portrait:"
-    )
-
-    print(
-        document_portrait
-    )
-
-    # ======================================================
-    # STEP 4 - LOAD DEEPFACE
-    # ======================================================
-
-    DeepFace = load_deepface()
-
-    if DeepFace is None:
-
-        return {
-
-            "status":
-                "ERROR",
-
-            "verified":
-                False,
-
-            "similarity_score":
-                None,
-
-            "distance":
-                None,
-
-            "threshold":
-                None,
-
-            "model":
-                FACE_MODEL,
-
-            "detector":
-                FACE_DETECTOR,
-
-            "document_face_found":
-                True,
-
-            "document_face_path":
-                document_portrait,
-
-            "message":
-                "DeepFace could not be loaded."
-
-        }
-
-    # ======================================================
-    # STEP 5 - ARCface VERIFICATION
-    # ======================================================
-
-    print(
-        "\n🧠 Running ArcFace verification..."
-    )
-
-    print(
-        "\nComparing:"
-    )
-
-    print(
-        "    SELFIE"
-    )
-
-    print(
-        "      ↕"
-    )
-
-    print(
-        "    DOCUMENT PORTRAIT"
-    )
-
-    try:
-
-        result = DeepFace.verify(
-
-            img1_path=reference_face,
-
-            img2_path=document_portrait,
-
-            model_name=FACE_MODEL,
-
-            detector_backend=FACE_DETECTOR,
-
-            enforce_detection=True
-
-        )
-
-    except Exception as e:
-
-        print(
-            "\n❌ ArcFace verification failed:"
-        )
-
-        print(
-            str(e)
-        )
+    if reference_image is None:
 
         cleanup_memory()
 
+
         return {
 
             "status":
@@ -709,63 +989,33 @@ def verify_faces(
                 None,
 
             "threshold":
-                None,
-
-            "model":
-                FACE_MODEL,
-
-            "detector":
-                FACE_DETECTOR,
-
-            "document_face_found":
-                True,
-
-            "document_face_path":
-                document_portrait,
+                SIMILARITY_THRESHOLD,
 
             "message":
-                (
-                    "Face verification failed: "
-                    f"{str(e)}"
-                )
+                "Unable to load selfie."
 
         }
 
-    # ======================================================
-    # STEP 6 - READ RESULT
-    # ======================================================
 
-    try:
+    print(
+        "📄 Loading document portrait..."
+    )
 
-        verified = bool(
 
-            result.get(
-                "verified",
-                False
-            )
+    document_image = load_image(
 
-        )
+        document_image_path
 
-        distance = result.get(
-            "distance"
-        )
+    )
 
-        threshold = result.get(
-            "threshold"
-        )
 
-        similarity = calculate_similarity(
+    if document_image is None:
 
-            distance,
-
-            threshold
-
-        )
-
-    except Exception as e:
+        del reference_image
 
         cleanup_memory()
 
+
         return {
 
             "status":
@@ -781,35 +1031,366 @@ def verify_faces(
                 None,
 
             "threshold":
-                None,
-
-            "model":
-                FACE_MODEL,
-
-            "detector":
-                FACE_DETECTOR,
-
-            "document_face_found":
-                True,
-
-            "document_face_path":
-                document_portrait,
+                SIMILARITY_THRESHOLD,
 
             "message":
-                (
-                    "Unable to process "
-                    f"face verification result: {str(e)}"
-                )
+                "Unable to load document portrait."
 
         }
 
+
     # ======================================================
-    # STEP 7 - DETERMINE STATUS
+    # DETECT SELFIE FACE
+    # ======================================================
+
+    print(
+        "\n🔎 Detecting face in selfie..."
+    )
+
+
+    reference_detection = (
+        detect_best_face(
+            reference_image
+        )
+    )
+
+
+    if reference_detection is None:
+
+        del reference_image
+        del document_image
+
+        cleanup_memory()
+
+
+        return {
+
+            "status":
+                "NO_REFERENCE_FACE",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                SIMILARITY_THRESHOLD,
+
+            "message":
+                "No face detected in selfie."
+
+        }
+
+
+    # ======================================================
+    # DETECT DOCUMENT FACE
+    # ======================================================
+
+    print(
+        "🔎 Detecting face in document portrait..."
+    )
+
+
+    document_detection = (
+        detect_best_face(
+            document_image
+        )
+    )
+
+
+    # ------------------------------------------------------
+    # Important:
+    #
+    # The document portrait was already cropped by
+    # document_face.py.
+    #
+    # Therefore, if Haar cannot find another face inside
+    # the crop, use the entire portrait crop.
+    #
+    # ------------------------------------------------------
+
+    if document_detection is None:
+
+        document_face_crop = (
+            document_image
+        )
+
+        print(
+            "ℹ️ No secondary face detection "
+            "inside document crop."
+        )
+
+        print(
+            "Using extracted document portrait directly."
+        )
+
+    else:
+
+        document_face_crop = crop_face(
+
+            document_image,
+
+            document_detection
+
+        )
+
+
+    # ======================================================
+    # CROP SELFIE
+    # ======================================================
+
+    reference_face_crop = crop_face(
+
+        reference_image,
+
+        reference_detection
+
+    )
+
+
+    if reference_face_crop is None:
+
+        del reference_image
+        del document_image
+
+        cleanup_memory()
+
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                SIMILARITY_THRESHOLD,
+
+            "message":
+                "Unable to crop selfie face."
+
+        }
+
+
+    if document_face_crop is None:
+
+        del reference_image
+        del document_image
+        del reference_face_crop
+
+        cleanup_memory()
+
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                SIMILARITY_THRESHOLD,
+
+            "message":
+                "Unable to prepare document portrait."
+
+        }
+
+
+    # ======================================================
+    # NORMALIZE
+    # ======================================================
+
+    print(
+        "\n🧠 Preparing face features..."
+    )
+
+
+    normalized_reference = normalize_face(
+
+        reference_face_crop
+
+    )
+
+
+    normalized_document = normalize_face(
+
+        document_face_crop
+
+    )
+
+
+    if (
+
+        normalized_reference is None
+
+        or
+
+        normalized_document is None
+
+    ):
+
+        del reference_image
+        del document_image
+        del reference_face_crop
+        del document_face_crop
+
+        cleanup_memory()
+
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "verified":
+                False,
+
+            "similarity_score":
+                None,
+
+            "distance":
+                None,
+
+            "threshold":
+                SIMILARITY_THRESHOLD,
+
+            "message":
+                "Unable to normalize face images."
+
+        }
+
+
+    # ======================================================
+    # COMPARE
+    # ======================================================
+
+    print(
+        "\n🔬 Comparing:"
+    )
+
+    print(
+        "   SELFIE"
+    )
+
+    print(
+        "     ↕"
+    )
+
+    print(
+        "   DOCUMENT PORTRAIT"
+    )
+
+
+    scores = compare_faces(
+
+        normalized_reference,
+
+        normalized_document
+
+    )
+
+
+    similarity_score = scores[
+        "similarity_score"
+    ]
+
+
+    # ======================================================
+    # DISTANCE
+    # ======================================================
+
+    distance = (
+
+        1.0 -
+
+        similarity_score
+
+    )
+
+
+    # ======================================================
+    # DECISION
+    # ======================================================
+
+    verified = (
+
+        similarity_score >=
+        SIMILARITY_THRESHOLD
+
+    )
+
+
+    # ======================================================
+    # STATUS
     # ======================================================
 
     if verified:
 
-        status = "MATCH"
+        status = "VERIFIED"
+
+        message = (
+            "Selfie and document portrait "
+            "passed lightweight face comparison."
+        )
+
+    else:
+
+        status = "NO_MATCH"
+
+        message = (
+            "Selfie and document portrait "
+            "did not meet the similarity threshold."
+        )
+
+
+    # ======================================================
+    # DISPLAY
+    # ======================================================
+
+    print(
+        "\nSimilarity score:",
+        round(
+            similarity_score,
+            4
+        )
+    )
+
+
+    print(
+        "Threshold:",
+        SIMILARITY_THRESHOLD
+    )
+
+
+    print(
+        "Distance:",
+        round(
+            distance,
+            4
+        )
+    )
+
+
+    if verified:
 
         print(
             "\n✅ FACE MATCH"
@@ -817,81 +1398,27 @@ def verify_faces(
 
     else:
 
-        status = "NO_MATCH"
-
         print(
             "\n❌ FACE DOES NOT MATCH"
         )
 
-    # ======================================================
-    # DISPLAY RESULT
-    # ======================================================
-
-    print(
-        "\n"
-        + "-" * 60
-    )
-
-    print(
-        "FACE VERIFICATION RESULT"
-    )
-
-    print(
-        "-" * 60
-    )
-
-    print(
-        "Status          :",
-        status
-    )
-
-    print(
-        "Verified        :",
-        verified
-    )
-
-    print(
-        "Similarity      :",
-        similarity
-    )
-
-    print(
-        "Distance        :",
-        distance
-    )
-
-    print(
-        "Threshold       :",
-        threshold
-    )
-
-    print(
-        "Model           :",
-        FACE_MODEL
-    )
-
-    print(
-        "Detector        :",
-        FACE_DETECTOR
-    )
-
-    print(
-        "Document Face   :",
-        document_portrait
-    )
-
-    print(
-        "-" * 60
-    )
 
     # ======================================================
     # CLEANUP
     # ======================================================
 
+    del reference_image
+    del document_image
+    del reference_face_crop
+    del document_face_crop
+    del normalized_reference
+    del normalized_document
+
     cleanup_memory()
 
+
     # ======================================================
-    # FINAL RESULT
+    # RESULT
     # ======================================================
 
     return {
@@ -903,34 +1430,41 @@ def verify_faces(
             verified,
 
         "similarity_score":
-            similarity,
+            round(
+                similarity_score,
+                4
+            ),
 
         "distance":
-            distance,
+            round(
+                distance,
+                4
+            ),
 
         "threshold":
-            threshold,
+            SIMILARITY_THRESHOLD,
 
-        "model":
-            FACE_MODEL,
+        "features": {
 
-        "detector":
-            FACE_DETECTOR,
+            "histogram_score":
+                scores[
+                    "histogram_score"
+                ],
 
-        "document_face_found":
-            True,
+            "structural_score":
+                scores[
+                    "structural_score"
+                ],
 
-        "document_face_path":
-            document_portrait,
+            "edge_score":
+                scores[
+                    "edge_score"
+                ]
+
+        },
 
         "message":
-            (
-                "Face verification completed successfully."
-                if verified
-                else
-                "Reference face does not match "
-                "the document portrait."
-            )
+            message
 
     }
 
@@ -947,18 +1481,30 @@ if __name__ == "__main__":
     )
 
     print(
-        "IDSHIELD AI - FACE VERIFICATION TEST"
+        "IDSHIELD AI - FACE VERIFIER TEST"
     )
 
     print(
         "=" * 60
     )
 
-    REFERENCE_FACE = os.path.join(
 
-        os.path.dirname(
-            os.path.abspath(__file__)
-        ),
+    # ------------------------------------------------------
+    # Test images
+    # ------------------------------------------------------
+
+    BASE_DIR = os.path.dirname(
+
+        os.path.abspath(
+            __file__
+        )
+
+    )
+
+
+    reference_face = os.path.join(
+
+        BASE_DIR,
 
         "test_images",
 
@@ -966,87 +1512,80 @@ if __name__ == "__main__":
 
     )
 
-    DOCUMENT_PORTRAIT = os.path.join(
 
-        os.path.dirname(
-            os.path.abspath(__file__)
-        ),
+    document_face = os.path.join(
 
-        "..",
+        BASE_DIR,
 
-        "ocr",
+        "test_images",
 
-        "test_documents",
-
-        "document_face_verification.jpg"
+        "document_face_crop.jpg"
 
     )
 
-    DOCUMENT_PORTRAIT = os.path.abspath(
-        DOCUMENT_PORTRAIT
+
+    print(
+        "\nSelfie:"
     )
 
     print(
-        "\nReference:"
+        reference_face
     )
 
-    print(
-        REFERENCE_FACE
-    )
 
     print(
         "\nDocument portrait:"
     )
 
     print(
-        DOCUMENT_PORTRAIT
+        document_face
     )
 
+
     if not os.path.exists(
-        REFERENCE_FACE
+        reference_face
     ):
 
         print(
-            "\n❌ Reference image not found."
+            "\n❌ Selfie test image not found."
         )
 
-        raise SystemExit(1)
-
-    if not os.path.exists(
-        DOCUMENT_PORTRAIT
+    elif not os.path.exists(
+        document_face
     ):
 
         print(
-            "\n❌ Document portrait not found."
+            "\n❌ Document portrait test image not found."
         )
 
-        raise SystemExit(1)
+    else:
 
-    result = verify_faces(
+        result = verify_faces(
 
-        REFERENCE_FACE,
+            reference_face,
 
-        DOCUMENT_PORTRAIT
+            document_face
 
-    )
+        )
 
-    print(
-        "\n"
-        + "=" * 60
-    )
 
-    print(
-        "FINAL RESULT"
-    )
+        print(
+            "\n"
+            + "=" * 60
+        )
 
-    print(
-        "=" * 60
-    )
+        print(
+            "FINAL RESULT"
+        )
 
-    print(
-        result
-    )
+        print(
+            "=" * 60
+        )
 
-    print(
-        "=" * 60
-    )
+        print(
+            result
+        )
+
+        print(
+            "=" * 60
+        )

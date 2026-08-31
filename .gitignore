@@ -1,23 +1,29 @@
 # Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
 venv/
 .venv/
-__pycache__/
-*.pyc
-
-# Backend temporary files
-backend/temp/
-
-# Node
-node_modules/
-dist/
 
 # Environment variables
 .env
 .env.*
 
+# Temporary files
+backend/temp/
+temp/
+
+# Python cache
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
 # IDE
 .vscode/
-.idea/
 
 # OS
 .DS_Store

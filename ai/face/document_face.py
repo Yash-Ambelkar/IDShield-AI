@@ -1,210 +1,127 @@
 import os
 import gc
 import cv2
+import numpy as np
 
 
 # ==========================================================
-# IDShield AI - LIGHTWEIGHT DOCUMENT PORTRAIT EXTRACTION
-# ==========================================================
-#
-# Purpose:
-#   Find and crop the portrait/photo inside an identity
-#   document without using DeepFace or RetinaFace.
-#
-# Pipeline:
-#
-#   Identity Document
-#          ↓
-#   OpenCV Haar Cascade
-#          ↓
-#   Face candidates
-#          ↓
-#   Candidate filtering
-#          ↓
-#   Best portrait selection
-#          ↓
-#   Portrait crop
-#          ↓
-#   Save crop
-#
-#
-# IMPORTANT:
-#
-# This module ONLY extracts the document portrait.
-#
-# It does NOT perform identity verification.
-#
-# Identity verification is handled by:
-#
-#     face/verifier.py
-#
+# IDSHIELD AI
+# LIGHTWEIGHT DOCUMENT FACE EXTRACTION
+# YuNet + OpenCV
 # ==========================================================
 
 
-# ==========================================================
-# CONFIGURATION
-# ==========================================================
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
-MIN_FACE_SIZE = 30
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "face_detection_yunet.onnx"
+)
+
+
+# ----------------------------------------------------------
+# SETTINGS
+# ----------------------------------------------------------
+
+CONFIDENCE_THRESHOLD = 0.75
+NMS_THRESHOLD = 0.3
+TOP_K = 50
 
 PADDING_RATIO = 0.25
 
-# Minimum confidence is not available with Haar Cascade.
-# Instead, candidates are scored using size, position,
-# and detection quality.
-
-# Reject a detection if it occupies almost the entire
-# document.
-MAX_DOCUMENT_AREA_RATIO = 0.75
-
-# Prefer portrait boxes that are not extremely wide/tall.
-MIN_FACE_ASPECT_RATIO = 0.35
-MAX_FACE_ASPECT_RATIO = 1.80
+MIN_FACE_SIZE = 20
 
 
 # ==========================================================
-# MEMORY CLEANUP
+# LOAD DETECTOR
 # ==========================================================
 
-def cleanup_memory():
+_detector = None
 
-    try:
 
-        gc.collect()
+def get_detector():
 
-    except Exception:
+    global _detector
 
-        pass
+    if _detector is None:
+
+        if not os.path.exists(MODEL_PATH):
+
+            raise FileNotFoundError(
+                f"YuNet model not found: {MODEL_PATH}"
+            )
+
+        print(
+            "\n🧠 Loading lightweight YuNet face detector..."
+        )
+
+        _detector = cv2.FaceDetectorYN.create(
+            MODEL_PATH,
+            "",
+            (320, 320),
+            CONFIDENCE_THRESHOLD,
+            NMS_THRESHOLD,
+            TOP_K
+        )
+
+        print(
+            "✅ YuNet detector loaded."
+        )
+
+    return _detector
 
 
 # ==========================================================
-# VALIDATE DOCUMENT IMAGE
+# VALIDATE IMAGE
 # ==========================================================
 
 def validate_document_image(
-    image_path
+    document_path
 ):
 
-    if not image_path:
+    if not document_path:
 
         return {
             "valid": False,
-            "message": "Document image was not provided."
+            "message": "Document path is empty."
         }
 
-
     if not os.path.exists(
-        image_path
+        document_path
     ):
 
         return {
             "valid": False,
-            "message":
-                f"Document image not found: {image_path}"
+            "message": "Document image does not exist."
         }
 
-
     image = cv2.imread(
-        image_path
+        document_path
     )
-
 
     if image is None:
 
         return {
             "valid": False,
-            "message":
-                "Document image could not be read."
+            "message": "Unable to read document image."
         }
 
-
     height, width = image.shape[:2]
-
-
-    del image
-
-    cleanup_memory()
-
 
     if width < 100 or height < 100:
 
         return {
             "valid": False,
-            "message":
-                "Document image is too small."
+            "message": "Document image resolution is too small."
         }
 
-
     return {
-
         "valid": True,
-
-        "width": width,
-
-        "height": height,
-
-        "message":
-            "Document image is valid."
-
+        "message": "Document image is valid."
     }
-
-
-# ==========================================================
-# LOAD OPENCV FACE DETECTOR
-# ==========================================================
-
-def load_face_detector():
-
-    """
-    Load OpenCV's built-in Haar Cascade.
-
-    This does not download a large external model.
-    """
-
-    try:
-
-        cascade_path = (
-
-            cv2.data.haarcascades
-            +
-            "haarcascade_frontalface_default.xml"
-
-        )
-
-
-        detector = cv2.CascadeClassifier(
-            cascade_path
-        )
-
-
-        if detector.empty():
-
-            print(
-                "\n❌ OpenCV Haar Cascade could not be loaded."
-            )
-
-            return None
-
-
-        print(
-            "\n✅ Lightweight OpenCV face detector loaded."
-        )
-
-
-        return detector
-
-
-    except Exception as e:
-
-        print(
-            "\n❌ Failed to load OpenCV face detector:"
-        )
-
-        print(
-            str(e)
-        )
-
-        return None
 
 
 # ==========================================================
@@ -212,464 +129,64 @@ def load_face_detector():
 # ==========================================================
 
 def detect_faces(
-    image_path
+    document_path
 ):
 
-    """
-    Detect faces using OpenCV Haar Cascade.
-
-    Returns:
-
-        [
-            {
-                "x": ...,
-                "y": ...,
-                "w": ...,
-                "h": ...,
-                "confidence": ...
-            }
-        ]
-
-    Haar Cascade does not provide a true confidence
-    probability, so confidence is represented as a
-    normalized heuristic score.
-    """
-
-    detector = load_face_detector()
-
-
-    if detector is None:
-
-        return []
-
-
     image = cv2.imread(
-        image_path
+        document_path
     )
-
 
     if image is None:
 
         return []
 
+    height, width = image.shape[:2]
 
-    try:
+    detector = get_detector()
 
-        gray = cv2.cvtColor(
+    detector.setInputSize(
+        (width, height)
+    )
 
-            image,
+    _, faces = detector.detect(
+        image
+    )
 
-            cv2.COLOR_BGR2GRAY
-
-        )
-
-
-        # --------------------------------------------------
-        # Improve contrast slightly
-        # --------------------------------------------------
-
-        gray = cv2.equalizeHist(
-            gray
-        )
-
-
-        # --------------------------------------------------
-        # Detect faces
-        # --------------------------------------------------
-
-        faces = detector.detectMultiScale(
-
-            gray,
-
-            scaleFactor=1.08,
-
-            minNeighbors=5,
-
-            minSize=(MIN_FACE_SIZE, MIN_FACE_SIZE)
-
-        )
-
-
-        detections = []
-
-
-        image_height, image_width = image.shape[:2]
-
-
-        document_area = (
-
-            image_width *
-
-            image_height
-
-        )
-
-
-        for (
-            x,
-            y,
-            w,
-            h
-        ) in faces:
-
-            face_area = (
-
-                w *
-
-                h
-
-            )
-
-
-            area_ratio = (
-
-                face_area /
-
-                document_area
-
-            )
-
-
-            # --------------------------------------------------
-            # Heuristic confidence
-            # --------------------------------------------------
-            #
-            # Haar does not expose a probability.
-            #
-            # We combine:
-            #
-            #   - face size
-            #   - reasonable dimensions
-            #   - detection area
-            #
-            # --------------------------------------------------
-
-            size_score = min(
-
-                1.0,
-
-                max(
-
-                    0.0,
-
-                    area_ratio * 8
-
-                )
-
-            )
-
-
-            aspect_ratio = (
-
-                w /
-
-                float(h)
-
-            )
-
-
-            aspect_score = 1.0
-
-
-            if (
-
-                aspect_ratio <
-                MIN_FACE_ASPECT_RATIO
-
-                or
-
-                aspect_ratio >
-                MAX_FACE_ASPECT_RATIO
-
-            ):
-
-                aspect_score = 0.3
-
-
-            confidence = (
-
-                0.65
-
-                +
-
-                (
-
-                    size_score * 0.20
-
-                )
-
-                +
-
-                (
-
-                    aspect_score * 0.15
-
-                )
-
-            )
-
-
-            confidence = min(
-
-                0.99,
-
-                confidence
-
-            )
-
-
-            detections.append({
-
-                "x": int(x),
-
-                "y": int(y),
-
-                "w": int(w),
-
-                "h": int(h),
-
-                "confidence":
-                    round(
-                        confidence,
-                        4
-                    )
-
-            })
-
-
-        del gray
-        del image
-
-        cleanup_memory()
-
-
-        return detections
-
-
-    except Exception as e:
-
-        print(
-            "\n⚠️ OpenCV face detection failed:"
-        )
-
-        print(
-            str(e)
-        )
-
-
-        try:
-
-            del gray
-
-        except Exception:
-
-            pass
-
-
-        try:
-
-            del image
-
-        except Exception:
-
-            pass
-
-
-        cleanup_memory()
-
+    if faces is None:
 
         return []
 
+    results = []
 
-# ==========================================================
-# FILTER FACE CANDIDATES
-# ==========================================================
+    for face in faces:
 
-def filter_face_candidates(
-    detections,
-    image_width,
-    image_height
-):
-
-    candidates = []
-
-
-    document_area = (
-
-        image_width *
-
-        image_height
-
-    )
-
-
-    for detection in detections:
-
-        x = detection["x"]
-
-        y = detection["y"]
-
-        w = detection["w"]
-
-        h = detection["h"]
-
-        confidence = detection["confidence"]
-
-
-        # ==================================================
-        # SIZE CHECK
-        # ==================================================
-
-        if (
-
-            w < MIN_FACE_SIZE
-
-            or
-
-            h < MIN_FACE_SIZE
-
-        ):
-
-            print(
-                "⚠️ Rejected tiny face:",
-                detection
-            )
-
-            continue
-
-
-        # ==================================================
-        # COORDINATE CHECK
-        # ==================================================
-
-        if x < 0 or y < 0:
-
-            continue
-
-
-        if (
-
-            x >= image_width
-
-            or
-
-            y >= image_height
-
-        ):
-
-            continue
-
-
-        # ==================================================
-        # CLAMP
-        # ==================================================
-
-        x2 = min(
-
-            x + w,
-
-            image_width
-
+        x = int(
+            face[0]
         )
 
-
-        y2 = min(
-
-            y + h,
-
-            image_height
-
+        y = int(
+            face[1]
         )
 
+        w = int(
+            face[2]
+        )
 
-        w = x2 - x
+        h = int(
+            face[3]
+        )
 
-        h = y2 - y
+        confidence = float(
+            face[14]
+        )
 
-
-        if w <= 0 or h <= 0:
-
+        if w < MIN_FACE_SIZE:
             continue
 
-
-        # ==================================================
-        # AREA RATIO
-        # ==================================================
-
-        face_area = (
-
-            w *
-
-            h
-
-        )
-
-
-        area_ratio = (
-
-            face_area /
-
-            document_area
-
-        )
-
-
-        # ==================================================
-        # FULL DOCUMENT PROTECTION
-        # ==================================================
-
-        if (
-
-            area_ratio >
-
-            MAX_DOCUMENT_AREA_RATIO
-
-        ):
-
-            print(
-                "⚠️ Rejected oversized detection:",
-                detection
-            )
-
+        if h < MIN_FACE_SIZE:
             continue
 
-
-        # ==================================================
-        # ASPECT RATIO
-        # ==================================================
-
-        aspect_ratio = (
-
-            w /
-
-            float(h)
-
-        )
-
-
-        if (
-
-            aspect_ratio < MIN_FACE_ASPECT_RATIO
-
-            or
-
-            aspect_ratio > MAX_FACE_ASPECT_RATIO
-
-        ):
-
-            print(
-                "⚠️ Rejected unusual face shape:",
-                detection
-            )
-
-            continue
-
-
-        # ==================================================
-        # STORE CANDIDATE
-        # ==================================================
-
-        candidates.append({
+        results.append({
 
             "x": x,
 
@@ -679,201 +196,106 @@ def filter_face_candidates(
 
             "h": h,
 
-            "confidence":
-                confidence,
-
-            "area_ratio":
-                area_ratio,
-
-            "aspect_ratio":
-                aspect_ratio
+            "confidence": confidence
 
         })
 
+    del image
 
-    return candidates
+    return results
 
 
 # ==========================================================
-# SELECT BEST FACE
+# FILTER FACE CANDIDATES
 # ==========================================================
 
-def select_best_face(
-    candidates,
-    image_width,
-    image_height
+def filter_face_candidates(
+    detections,
+    width,
+    height
 ):
 
-    if not candidates:
+    candidates = []
 
-        return None
+    for face in detections:
 
+        x = face["x"]
+        y = face["y"]
+        w = face["w"]
+        h = face["h"]
 
-    # ------------------------------------------------------
-    # Center of document
-    # ------------------------------------------------------
+        area = w * h
 
-    document_center_x = (
-        image_width / 2
-    )
+        relative_area = (
+            area /
+            float(width * height)
+        )
 
-    document_center_y = (
-        image_height / 2
-    )
-
-
-    def score(
-        candidate
-    ):
-
-        x = candidate["x"]
-
-        y = candidate["y"]
-
-        w = candidate["w"]
-
-        h = candidate["h"]
-
-
-        confidence = candidate[
-            "confidence"
-        ]
-
-
-        area_ratio = candidate[
-            "area_ratio"
-        ]
-
-
-        # ==================================================
-        # FACE CENTER
-        # ==================================================
-
-        face_center_x = (
+        center_x = (
             x + w / 2
         )
 
-        face_center_y = (
+        center_y = (
             y + h / 2
         )
 
+        # --------------------------------------------------
+        # Ignore extremely tiny faces
+        # --------------------------------------------------
 
-        # ==================================================
-        # DISTANCE FROM DOCUMENT CENTER
-        # ==================================================
+        if relative_area < 0.0005:
 
-        dx = (
+            continue
 
-            face_center_x
-            -
-            document_center_x
+        # --------------------------------------------------
+        # Ignore faces touching image boundary
+        # --------------------------------------------------
 
-        )
+        if x < 0 or y < 0:
 
+            continue
 
-        dy = (
+        if x + w > width:
 
-            face_center_y
-            -
-            document_center_y
+            continue
 
-        )
+        if y + h > height:
 
+            continue
 
-        max_distance = (
+        # --------------------------------------------------
+        # Score
+        # --------------------------------------------------
 
-            (
-
-                image_width ** 2
-
-                +
-
-                image_height ** 2
-
-            )
-
-            **
-
-            0.5
-
-        )
-
-
-        distance = (
-
-            (
-
-                dx ** 2
-
-                +
-
-                dy ** 2
-
-            )
-
-            **
-
-            0.5
-
-        )
-
-
-        center_score = max(
-
-            0.0,
-
-            1.0
-            -
-            (
-                distance /
-                max_distance
-            )
-
-        )
-
-
-        # ==================================================
-        # SIZE SCORE
-        # ==================================================
-
-        size_score = min(
-
-            1.0,
-
-            area_ratio * 8
-
-        )
-
-
-        # ==================================================
-        # FINAL SCORE
-        # ==================================================
-
-        return (
-
-            confidence * 0.55
-
+        score = (
+            face["confidence"] * 0.7
             +
-
-            center_score * 0.25
-
-            +
-
-            size_score * 0.20
-
+            min(
+                relative_area * 10,
+                1.0
+            ) * 0.3
         )
 
+        candidates.append({
+
+            **face,
+
+            "score": score,
+
+            "center_x": center_x,
+
+            "center_y": center_y,
+
+            "relative_area": relative_area
+
+        })
 
     candidates.sort(
-
-        key=score,
-
+        key=lambda item: item["score"],
         reverse=True
-
     )
 
-
-    return candidates[0]
+    return candidates
 
 
 # ==========================================================
@@ -887,106 +309,55 @@ def crop_face(
 
     height, width = image.shape[:2]
 
-
     x = face["x"]
-
     y = face["y"]
-
     w = face["w"]
-
     h = face["h"]
 
-
-    # ======================================================
-    # PADDING
-    # ======================================================
-
     padding_x = int(
-
-        w *
-
-        PADDING_RATIO
-
+        w * PADDING_RATIO
     )
-
 
     padding_y = int(
-
-        h *
-
-        PADDING_RATIO
-
+        h * PADDING_RATIO
     )
-
-
-    # ======================================================
-    # CROP COORDINATES
-    # ======================================================
 
     x1 = max(
-
         0,
-
         x - padding_x
-
     )
-
 
     y1 = max(
-
         0,
-
         y - padding_y
-
     )
-
 
     x2 = min(
-
         width,
-
         x + w + padding_x
-
     )
-
 
     y2 = min(
-
         height,
-
         y + h + padding_y
-
     )
 
-
-    # ======================================================
-    # CROP
-    # ======================================================
-
     crop = image[
-
         y1:y2,
-
         x1:x2
-
     ]
 
-
     if crop is None:
-
         return None
-
 
     if crop.size == 0:
-
         return None
-
 
     return crop
 
 
 # ==========================================================
-# EXTRACT DOCUMENT PORTRAIT
+# EXTRACT DOCUMENT FACE
 # ==========================================================
 
 def extract_document_face(
@@ -1000,283 +371,208 @@ def extract_document_face(
     )
 
     print(
-        "IDSHIELD AI - LIGHTWEIGHT DOCUMENT PORTRAIT"
+        "IDSHIELD AI - LIGHTWEIGHT DOCUMENT FACE EXTRACTION"
     )
 
     print(
         "=" * 60
     )
 
-
-    # ======================================================
-    # STEP 1 - VALIDATE
-    # ======================================================
-
-    validation = validate_document_image(
-
-        document_path
-
+    print(
+        "\n🧑 Searching for portrait inside document..."
     )
 
+    # ------------------------------------------------------
+    # Validate
+    # ------------------------------------------------------
+
+    validation = validate_document_image(
+        document_path
+    )
 
     if not validation["valid"]:
 
-        print(
-            "❌",
-            validation["message"]
-        )
-
         return {
 
-            "status":
-                "ERROR",
+            "status": "ERROR",
 
-            "face_found":
-                False,
+            "face_found": False,
 
-            "face_path":
-                None,
+            "face_path": None,
 
-            "confidence":
-                None,
+            "confidence": None,
 
-            "facial_area":
-                None,
+            "facial_area": None,
 
             "message":
                 validation["message"]
 
         }
 
-
-    # ======================================================
-    # STEP 2 - LOAD DOCUMENT
-    # ======================================================
+    # ------------------------------------------------------
+    # Load image
+    # ------------------------------------------------------
 
     image = cv2.imread(
-
         document_path
-
     )
-
 
     if image is None:
 
         return {
 
-            "status":
-                "ERROR",
+            "status": "ERROR",
 
-            "face_found":
-                False,
+            "face_found": False,
 
-            "face_path":
-                None,
+            "face_path": None,
 
-            "confidence":
-                None,
+            "confidence": None,
 
-            "facial_area":
-                None,
+            "facial_area": None,
 
             "message":
                 "Unable to load document image."
 
         }
 
-
     height, width = image.shape[:2]
 
+    print(
+        f"\n📄 Document size: {width} x {height}"
+    )
+
+    # ------------------------------------------------------
+    # Detect
+    # ------------------------------------------------------
+
+    try:
+
+        detections = detect_faces(
+            document_path
+        )
+
+    except Exception as e:
+
+        del image
+        gc.collect()
+
+        return {
+
+            "status": "ERROR",
+
+            "face_found": False,
+
+            "face_path": None,
+
+            "confidence": None,
+
+            "facial_area": None,
+
+            "message":
+                f"Face detection failed: {str(e)}"
+
+        }
 
     print(
-        f"\n📄 Document size: "
-        f"{width} x {height}"
+        f"\n🔎 Raw detections: {len(detections)}"
     )
 
-
-    # ======================================================
-    # STEP 3 - DETECT
-    # ======================================================
-
-    print(
-        "\n🔎 Detecting document portrait..."
-    )
-
-
-    detections = detect_faces(
-
-        document_path
-
-    )
-
-
-    print(
-        f"🔎 Raw detections: "
-        f"{len(detections)}"
-    )
-
-
-    # ======================================================
-    # STEP 4 - FILTER
-    # ======================================================
+    # ------------------------------------------------------
+    # Filter
+    # ------------------------------------------------------
 
     candidates = filter_face_candidates(
-
         detections,
-
         width,
-
         height
-
     )
-
 
     print(
-        f"✅ Valid candidates: "
-        f"{len(candidates)}"
+        f"✅ Valid portrait candidates: {len(candidates)}"
     )
 
-
-    # ======================================================
-    # NO FACE
-    # ======================================================
+    # ------------------------------------------------------
+    # No face
+    # ------------------------------------------------------
 
     if not candidates:
 
         del image
-
-        cleanup_memory()
-
+        gc.collect()
 
         return {
 
-            "status":
-                "REVIEW",
+            "status": "REVIEW",
 
-            "face_found":
-                False,
+            "face_found": False,
 
-            "face_path":
-                None,
+            "face_path": None,
 
-            "confidence":
-                None,
+            "confidence": None,
 
-            "facial_area":
-                None,
+            "facial_area": None,
 
             "message":
-                (
-                    "No reliable portrait could "
-                    "be detected in the identity document."
-                )
+                "No reliable portrait found in document."
 
         }
 
+    # ------------------------------------------------------
+    # Select best face
+    # ------------------------------------------------------
 
-    # ======================================================
-    # STEP 5 - SELECT
-    # ======================================================
-
-    best_face = select_best_face(
-
-        candidates,
-
-        width,
-
-        height
-
-    )
-
-
-    if best_face is None:
-
-        del image
-
-        cleanup_memory()
-
-
-        return {
-
-            "status":
-                "REVIEW",
-
-            "face_found":
-                False,
-
-            "face_path":
-                None,
-
-            "confidence":
-                None,
-
-            "facial_area":
-                None,
-
-            "message":
-                "No reliable portrait candidate found."
-
-        }
-
+    best_face = candidates[0]
 
     print(
-        "\n🎯 Selected document portrait:"
+        "\n🏆 Selected document portrait:"
     )
-
 
     print(
-        best_face
+        f"Confidence: {best_face['confidence']:.4f}"
     )
 
+    print(
+        f"Face area: {best_face['w']} x {best_face['h']}"
+    )
 
-    # ======================================================
-    # STEP 6 - CROP
-    # ======================================================
+    # ------------------------------------------------------
+    # Crop
+    # ------------------------------------------------------
 
-    face_crop = crop_face(
-
+    crop = crop_face(
         image,
-
         best_face
-
     )
 
-
-    if face_crop is None:
+    if crop is None:
 
         del image
-
-        cleanup_memory()
-
+        gc.collect()
 
         return {
 
-            "status":
-                "ERROR",
+            "status": "ERROR",
 
-            "face_found":
-                False,
+            "face_found": False,
 
-            "face_path":
-                None,
+            "face_path": None,
 
             "confidence":
                 best_face["confidence"],
 
-            "facial_area":
-                best_face,
+            "facial_area": best_face,
 
             "message":
                 "Unable to crop detected portrait."
 
         }
 
+    # ------------------------------------------------------
+    # Output path
+    # ------------------------------------------------------
 
-    # ======================================================
-    # STEP 7 - OUTPUT PATH
-    # ======================================================
-
-    if output_path is None:
+    if not output_path:
 
         output_path = os.path.join(
 
@@ -1288,57 +584,33 @@ def extract_document_face(
 
         )
 
-
-    output_directory = os.path.dirname(
-
-        output_path
-
-    )
-
-
-    if output_directory:
-
-        os.makedirs(
-
-            output_directory,
-
-            exist_ok=True
-
-        )
-
-
-    # ======================================================
-    # STEP 8 - SAVE
-    # ======================================================
+    # ------------------------------------------------------
+    # Save
+    # ------------------------------------------------------
 
     success = cv2.imwrite(
-
         output_path,
-
-        face_crop
-
+        crop,
+        [
+            cv2.IMWRITE_JPEG_QUALITY,
+            95
+        ]
     )
 
+    del crop
+    del image
+
+    gc.collect()
 
     if not success:
 
-        del face_crop
-
-        del image
-
-        cleanup_memory()
-
-
         return {
 
-            "status":
-                "ERROR",
+            "status": "ERROR",
 
-            "face_found":
-                False,
+            "face_found": False,
 
-            "face_path":
-                None,
+            "face_path": None,
 
             "confidence":
                 best_face["confidence"],
@@ -1347,74 +619,30 @@ def extract_document_face(
                 best_face,
 
             "message":
-                "Unable to save portrait crop."
+                "Unable to save document portrait."
 
         }
 
-
-    # ======================================================
-    # DISPLAY
-    # ======================================================
-
-    try:
-
-        crop_height, crop_width = (
-            face_crop.shape[:2]
-        )
-
-        print(
-            "\n📐 Portrait crop size: "
-            f"{crop_width} x {crop_height}"
-        )
-
-    except Exception:
-
-        pass
-
-
     print(
-        "\n✅ Portrait crop saved:"
+        "\n✅ DOCUMENT PORTRAIT EXTRACTED"
     )
 
     print(
+        "Portrait:",
         output_path
     )
 
-
-    # ======================================================
-    # CLEANUP
-    # ======================================================
-
-    del face_crop
-
-    del image
-
-    cleanup_memory()
-
-
-    # ======================================================
-    # FINAL RESULT
-    # ======================================================
-
     return {
 
-        "status":
-            "FOUND",
+        "status": "PASS",
 
-        "face_found":
-            True,
+        "face_found": True,
 
         "face_path":
             output_path,
 
         "confidence":
-            round(
-
-                best_face["confidence"],
-
-                4
-
-            ),
+            best_face["confidence"],
 
         "facial_area": {
 
@@ -1433,10 +661,7 @@ def extract_document_face(
         },
 
         "message":
-            (
-                "Identity document portrait "
-                "detected successfully."
-            )
+            "Document portrait extracted successfully."
 
     }
 
@@ -1447,52 +672,6 @@ def extract_document_face(
 
 if __name__ == "__main__":
 
-    test_document = os.path.join(
-
-        os.path.dirname(
-            os.path.abspath(__file__)
-        ),
-
-        "..",
-
-        "ocr",
-
-        "test_documents",
-
-        "sample_document_with_face.jpg"
-
-    )
-
-
-    test_document = os.path.abspath(
-        test_document
-    )
-
-
-    result = extract_document_face(
-
-        test_document
-
-    )
-
-
     print(
-        "\n"
-        + "=" * 60
-    )
-
-    print(
-        "FINAL RESULT"
-    )
-
-    print(
-        "=" * 60
-    )
-
-    print(
-        result
-    )
-
-    print(
-        "=" * 60
+        "YuNet document face extractor loaded."
     )

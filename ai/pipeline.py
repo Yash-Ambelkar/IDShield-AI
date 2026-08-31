@@ -33,7 +33,11 @@ import cv2
 #    ↓
 # NORMALIZATION
 #    ↓
-# ARCFACE
+# YuNet FACE DETECTION
+#    ↓
+# SFace FACE EMBEDDING
+#    ↓
+# COSINE SIMILARITY
 #    ↓
 # MATCH / NO_MATCH
 #
@@ -51,6 +55,24 @@ import cv2
 #     SELFIE
 #       VS
 #     WHOLE DOCUMENT
+#
+#
+# MEMORY OPTIMIZATION
+#
+# The previous implementation used:
+#
+#     DeepFace
+#     RetinaFace
+#     ArcFace
+#
+# These models caused Railway memory exhaustion.
+#
+# The new implementation uses:
+#
+#     OpenCV YuNet
+#     OpenCV SFace
+#
+# This avoids the heavy DeepFace / RetinaFace stack.
 #
 # ==========================================================
 
@@ -84,13 +106,9 @@ if BASE_DIR not in sys.path:
 # CONFIGURATION
 # ==========================================================
 
+
 # ----------------------------------------------------------
 # Face verification
-# ----------------------------------------------------------
-#
-# True  = enable face verification
-# False = disable face verification
-#
 # ----------------------------------------------------------
 
 FACE_VERIFICATION_ENABLED = True
@@ -99,15 +117,23 @@ FACE_VERIFICATION_ENABLED = True
 # ----------------------------------------------------------
 # Face recognition model
 # ----------------------------------------------------------
+#
+# Lightweight OpenCV SFace model
+#
+# ----------------------------------------------------------
 
-FACE_MODEL = "ArcFace"
+FACE_MODEL = "SFace"
 
 
 # ----------------------------------------------------------
 # Face detector
 # ----------------------------------------------------------
+#
+# Lightweight OpenCV YuNet detector
+#
+# ----------------------------------------------------------
 
-FACE_DETECTOR = "retinaface"
+FACE_DETECTOR = "YuNet"
 
 
 # ----------------------------------------------------------
@@ -219,12 +245,16 @@ def get_ocr():
         from paddleocr import PaddleOCR
 
         _ocr_instance = PaddleOCR(
+    lang="en",
+    enable_mkldnn=False,
 
-            lang="en",
+    text_detection_model_name="PP-OCRv5_mobile_det",
+    text_recognition_model_name="PP-OCRv5_mobile_rec",
 
-            enable_mkldnn=False
-
-        )
+    use_doc_orientation_classify=False,
+    use_doc_unwarping=False,
+    use_textline_orientation=False
+)
 
         print(
             "✅ PaddleOCR initialized"
@@ -577,10 +607,6 @@ def run_validation(
 
         }
 
-    # ======================================================
-    # DISPLAY
-    # ======================================================
-
     print_json(
         "DOCUMENT VALIDATION RESULT",
         result
@@ -681,10 +707,6 @@ def run_authenticity(
 
         }
 
-    # ======================================================
-    # DISPLAY
-    # ======================================================
-
     print_json(
         "AUTHORITY / AUTHENTICITY RESULT",
         result
@@ -754,10 +776,6 @@ def run_tampering(
         f"\nSubmitted document: {submitted_path}"
     )
 
-    # ======================================================
-    # VALIDATE PATH
-    # ======================================================
-
     if not submitted_path:
 
         return {
@@ -789,10 +807,6 @@ def run_tampering(
                 "Submitted document was not found."
 
         }
-
-    # ======================================================
-    # RUN DETECTOR
-    # ======================================================
 
     print(
         "\n🔍 Running forensic tampering analysis..."
@@ -838,10 +852,6 @@ def run_tampering(
 
         }
 
-    # ======================================================
-    # VALIDATE RESULT
-    # ======================================================
-
     if not isinstance(
         result,
         dict
@@ -862,10 +872,6 @@ def run_tampering(
                 )
 
         }
-
-    # ======================================================
-    # DISPLAY
-    # ======================================================
 
     print_json(
         "FORENSIC ANALYSIS RESULT",
@@ -930,10 +936,6 @@ def prepare_document_face(
         "\n🧑 Searching for portrait inside document..."
     )
 
-    # ======================================================
-    # LOAD DOCUMENT FACE MODULE
-    # ======================================================
-
     try:
 
         from face.document_face import (
@@ -975,10 +977,6 @@ def prepare_document_face(
 
         }
 
-    # ======================================================
-    # OUTPUT PATH
-    # ======================================================
-
     output_path = os.path.join(
 
         os.path.dirname(
@@ -988,10 +986,6 @@ def prepare_document_face(
         "document_face_crop.jpg"
 
     )
-
-    # ======================================================
-    # EXTRACT
-    # ======================================================
 
     try:
 
@@ -1038,10 +1032,6 @@ def prepare_document_face(
 
         }
 
-    # ======================================================
-    # VALIDATE RESULT
-    # ======================================================
-
     if not isinstance(
         result,
         dict
@@ -1069,18 +1059,10 @@ def prepare_document_face(
 
         }
 
-    # ======================================================
-    # DISPLAY
-    # ======================================================
-
     print_json(
         "DOCUMENT PORTRAIT RESULT",
         result
     )
-
-    # ======================================================
-    # CHECK RESULT
-    # ======================================================
 
     if result.get(
         "face_found",
@@ -1126,7 +1108,7 @@ def normalize_document_face(
 
     """
     Enlarges a small document portrait crop before sending
-    it to the face verification model.
+    it to the lightweight SFace verification system.
 
     Original crop is not modified.
     """
@@ -1158,10 +1140,6 @@ def normalize_document_face(
             f"{width} x {height}"
         )
 
-        # --------------------------------------------------
-        # Calculate scale
-        # --------------------------------------------------
-
         scale = max(
 
             MIN_FACE_IMAGE_SIZE / width,
@@ -1172,10 +1150,6 @@ def normalize_document_face(
 
         )
 
-        # --------------------------------------------------
-        # Already large enough
-        # --------------------------------------------------
-
         if scale <= 1.0:
 
             del image
@@ -1183,10 +1157,6 @@ def normalize_document_face(
             cleanup_memory()
 
             return face_path
-
-        # --------------------------------------------------
-        # New dimensions
-        # --------------------------------------------------
 
         new_width = int(
             width * scale
@@ -1201,10 +1171,6 @@ def normalize_document_face(
             f"{new_width} x {new_height}"
         )
 
-        # --------------------------------------------------
-        # Resize
-        # --------------------------------------------------
-
         enlarged = cv2.resize(
 
             image,
@@ -1217,10 +1183,6 @@ def normalize_document_face(
             interpolation=cv2.INTER_CUBIC
 
         )
-
-        # --------------------------------------------------
-        # Save verification image
-        # --------------------------------------------------
 
         directory = os.path.dirname(
             face_path
@@ -1343,6 +1305,12 @@ def run_face_verification(
             "document_face_path":
                 None,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 "Face verification is disabled."
 
@@ -1380,6 +1348,12 @@ def run_face_verification(
 
             "document_face_path":
                 None,
+
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
 
             "message":
                 "No selfie/reference face was provided."
@@ -1421,6 +1395,12 @@ def run_face_verification(
             "document_face_path":
                 None,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 (
                     "Reference face was not found: "
@@ -1458,6 +1438,12 @@ def run_face_verification(
             "document_face_path":
                 None,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 "No document image was provided."
 
@@ -1490,6 +1476,12 @@ def run_face_verification(
             "document_face_path":
                 None,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 (
                     "Document image was not found: "
@@ -1499,6 +1491,7 @@ def run_face_verification(
         }
 
     # ======================================================
+    # STEP 5A
     # EXTRACT DOCUMENT PORTRAIT
     # ======================================================
 
@@ -1539,6 +1532,12 @@ def run_face_verification(
 
             "document_face_path":
                 None,
+
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
 
             "message":
                 "Invalid document portrait result."
@@ -1581,6 +1580,12 @@ def run_face_verification(
             "document_face_path":
                 None,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 (
                     "No reliable portrait could be "
@@ -1622,6 +1627,12 @@ def run_face_verification(
             "document_face_path":
                 None,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 "Portrait extraction returned no file path."
 
@@ -1662,13 +1673,19 @@ def run_face_verification(
             "document_face_path":
                 document_face_path,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 "Unable to prepare document portrait."
 
         }
 
     # ======================================================
-    # LOAD FACE VERIFIER
+    # LOAD LIGHTWEIGHT FACE VERIFIER
     # ======================================================
 
     try:
@@ -1680,7 +1697,7 @@ def run_face_verification(
     except Exception as e:
 
         print(
-            "\n❌ Unable to load face verifier:"
+            "\n❌ Unable to load lightweight face verifier:"
         )
 
         print(
@@ -1710,6 +1727,12 @@ def run_face_verification(
             "document_face_path":
                 verification_face_path,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 (
                     "Face verifier could not be loaded: "
@@ -1723,7 +1746,7 @@ def run_face_verification(
     # ======================================================
 
     print(
-        "\n🧠 Preparing face verification..."
+        "\n🧠 Preparing lightweight face verification..."
     )
 
     print(
@@ -1801,6 +1824,12 @@ def run_face_verification(
             "document_face_path":
                 verification_face_path,
 
+            "model":
+                FACE_MODEL,
+
+            "detector":
+                FACE_DETECTOR,
+
             "message":
                 (
                     "Face verification failed: "
@@ -1861,11 +1890,31 @@ def run_face_verification(
 
         "NO_MATCH",
 
-        "NO_DOCUMENT_FACE"
+        "NO_DOCUMENT_FACE",
+
+        "NO_REFERENCE_FACE"
 
     ]:
 
         result["status"] = "NO_MATCH"
+
+    # ======================================================
+    # ADD MODEL INFORMATION
+    # ======================================================
+
+    result[
+        "model"
+    ] = result.get(
+        "model",
+        FACE_MODEL
+    )
+
+    result[
+        "detector"
+    ] = result.get(
+        "detector",
+        FACE_DETECTOR
+    )
 
     # ======================================================
     # ADD DOCUMENT PORTRAIT INFORMATION
@@ -2001,10 +2050,6 @@ def run_risk_engine(
         )
 
     except TypeError:
-
-        # --------------------------------------------------
-        # Legacy compatibility
-        # --------------------------------------------------
 
         try:
 
@@ -2214,10 +2259,6 @@ def display_final_decision(
         "=" * 60
     )
 
-    # ======================================================
-    # BASIC RESULT
-    # ======================================================
-
     decision = result.get(
         "decision",
         "UNKNOWN"
@@ -2251,7 +2292,7 @@ def display_final_decision(
     )
 
     # ======================================================
-    # VALIDATION
+    # CHECKS
     # ======================================================
 
     checks = result.get(
@@ -2272,7 +2313,7 @@ def display_final_decision(
         )
 
         print(
-            "Validation      :",
+            "Validation          :",
             checks.get(
                 "validation",
                 "UNKNOWN"
@@ -2280,7 +2321,7 @@ def display_final_decision(
         )
 
         print(
-            "Authenticity    :",
+            "Authenticity        :",
             checks.get(
                 "authenticity",
                 "UNKNOWN"
@@ -2288,7 +2329,7 @@ def display_final_decision(
         )
 
         print(
-            "Tampering       :",
+            "Tampering           :",
             checks.get(
                 "tampering",
                 "UNKNOWN"
@@ -2296,7 +2337,7 @@ def display_final_decision(
         )
 
         print(
-            "Face Verification:",
+            "Face Verification   :",
             checks.get(
                 "face_verification",
                 "UNKNOWN"
@@ -2449,8 +2490,30 @@ def display_final_decision(
             )
         )
 
+    if face.get(
+        "model"
+    ):
+
+        print(
+            "FACE MODEL       :",
+            face.get(
+                "model"
+            )
+        )
+
+    if face.get(
+        "detector"
+    ):
+
+        print(
+            "FACE DETECTOR    :",
+            face.get(
+                "detector"
+            )
+        )
+
     # ======================================================
-    # FINAL DECISION MESSAGE
+    # FINAL DECISION
     # ======================================================
 
     print()

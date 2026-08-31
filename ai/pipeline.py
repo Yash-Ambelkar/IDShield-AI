@@ -1052,7 +1052,6 @@ def display_final_decision(result):
 # ==========================================================
 # COMPLETE PIPELINE
 # ==========================================================
-
 def run_pipeline(
     document_path,
     reference_face_path=None
@@ -1060,41 +1059,28 @@ def run_pipeline(
 
     print("\n")
     print("=" * 60)
-    print("       IDSHIELD AI - COMPLETE PIPELINE")
+    print("       IDSHIELD AI - HOSTED PIPELINE")
     print("=" * 60)
 
     # ======================================================
     # STEP 1 - OCR
     # ======================================================
 
-    print("\n🚀 STARTING STEP 1: OCR")
+    print("\n🚀 STARTING OCR")
 
     ocr_result = run_ocr(
         document_path
     )
 
-    if ocr_result.get(
-        "status"
-    ) == "ERROR":
-
-        print(
-            "\n❌ PIPELINE STOPPED AT OCR"
-        )
+    if ocr_result.get("status") == "ERROR":
 
         return {
-
-            "status":
-                "ERROR",
-
-            "stage":
-                "OCR",
-
-            "message":
-                ocr_result.get(
-                    "message",
-                    "OCR error"
-                )
-
+            "status": "ERROR",
+            "stage": "OCR",
+            "message": ocr_result.get(
+                "message",
+                "OCR error"
+            )
         }
 
     document_data = ocr_result.get(
@@ -1103,54 +1089,50 @@ def run_pipeline(
     )
 
     # ======================================================
-    # STEP 2
+    # STEP 2 - VALIDATION
     # ======================================================
 
-    print("\n🚀 STARTING STEP 2: VALIDATION")
+    print("\n🚀 STARTING VALIDATION")
 
     validation_result = run_validation(
         document_data
     )
 
     # ======================================================
-    # STEP 3
+    # STEP 3 - AUTHENTICITY
     # ======================================================
 
-    print("\n🚀 STARTING STEP 3: AUTHENTICITY")
+    print("\n🚀 STARTING AUTHENTICITY")
 
     authenticity_result = run_authenticity(
         document_data
     )
 
     # ======================================================
-    # STEP 4
+    # SKIP HEAVY AI ON RENDER
     # ======================================================
 
-    print("\n🚀 STARTING STEP 4: TAMPERING")
+    print("\nℹ️ Heavy AI modules disabled on Render")
 
-    tampering_result = run_tampering(
-        document_path
-    )
+    tampering_result = {
+        "status": "NOT_AVAILABLE",
+        "tampering_score": None,
+        "message":
+            "Forensic analysis is unavailable on the hosted free instance."
+    }
 
-    # ======================================================
-    # STEP 5
-    # ======================================================
-
-    print("\n🚀 STARTING STEP 5: FACE")
-
-    face_result = run_face_verification(
-
-        reference_face_path,
-
-        document_path
-
-    )
+    face_result = {
+        "status": "NOT_AVAILABLE",
+        "similarity_score": None,
+        "message":
+            "Face verification is unavailable on the hosted free instance."
+    }
 
     # ======================================================
-    # STEP 6
+    # RISK ENGINE
     # ======================================================
 
-    print("\n🚀 STARTING STEP 6: RISK ENGINE")
+    print("\n🚀 STARTING RISK ENGINE")
 
     risk_result = run_risk_engine(
 
@@ -1178,11 +1160,9 @@ def run_pipeline(
 
     return {
 
-        "status":
-            "COMPLETED",
+        "status": "COMPLETED",
 
-        "ocr":
-            ocr_result,
+        "ocr": ocr_result,
 
         "validation":
             validation_result,

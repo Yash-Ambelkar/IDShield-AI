@@ -5,7 +5,41 @@ import gc
 
 
 # ==========================================================
-# IDShield AI - MEMORY SAFE VERIFICATION PIPELINE
+# IDShield AI - HOSTED VERIFICATION PIPELINE
+# ==========================================================
+#
+# Pipeline:
+#
+# 1. OCR
+# 2. Document Validation
+# 3. Authority / Authenticity
+# 4. Forensic Analysis      -> disabled on free hosted instance
+# 5. Face Verification      -> disabled on free hosted instance
+# 6. Risk Engine
+# 7. Final Decision
+#
+# ==========================================================
+
+
+# ==========================================================
+# IMPORTANT:
+# DISABLE PADDLEOCR oneDNN / MKLDNN
+# ==========================================================
+#
+# This must happen BEFORE importing PaddleOCR/PaddlePaddle.
+#
+# It prevents errors such as:
+#
+# ConvertPirAttribute2RuntimeAttribute not support
+# [pir::ArrayAttribute<pir::DoubleAttribute>]
+#
+# ==========================================================
+
+os.environ["PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT"] = "0"
+
+
+# ==========================================================
+# BASE DIRECTORY
 # ==========================================================
 
 BASE_DIR = os.path.dirname(
@@ -13,7 +47,11 @@ BASE_DIR = os.path.dirname(
 )
 
 if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+
+    sys.path.insert(
+        0,
+        BASE_DIR
+    )
 
 
 # ==========================================================
@@ -25,27 +63,51 @@ _ocr_instance = None
 
 def get_ocr():
     """
-    Create PaddleOCR only when needed.
-    Reuse the same instance for future requests.
+    Initialize PaddleOCR only when required.
+
+    The model is reused for subsequent requests so that
+    the application does not repeatedly load the OCR model.
     """
 
     global _ocr_instance
 
+    # ------------------------------------------------------
+    # Reuse existing model
+    # ------------------------------------------------------
+
     if _ocr_instance is not None:
-        print("♻️ Reusing existing OCR model")
+
+        print(
+            "♻️ Reusing existing OCR model"
+        )
+
         return _ocr_instance
 
-    print("\n🔄 Initializing PaddleOCR...")
+    # ------------------------------------------------------
+    # Initialize OCR
+    # ------------------------------------------------------
+
+    print(
+        "\n🔄 Initializing PaddleOCR..."
+    )
 
     try:
 
         from paddleocr import PaddleOCR
 
         _ocr_instance = PaddleOCR(
-            lang="en"
+
+            lang="en",
+
+            # IMPORTANT:
+            # Disable MKLDNN / oneDNN
+            enable_mkldnn=False
+
         )
 
-        print("✅ PaddleOCR initialized")
+        print(
+            "✅ PaddleOCR initialized"
+        )
 
         return _ocr_instance
 
@@ -64,49 +126,123 @@ def get_ocr():
 
 def cleanup_memory():
 
-    print("🧹 Cleaning unused memory...")
+    print(
+        "🧹 Cleaning unused memory..."
+    )
 
-    gc.collect()
+    try:
 
-    print("✅ Memory cleanup completed")
+        gc.collect()
+
+    except Exception as e:
+
+        print(
+            f"⚠️ Memory cleanup warning: {e}"
+        )
+
+    print(
+        "✅ Memory cleanup completed"
+    )
+
+
+# ==========================================================
+# SAFE JSON DISPLAY
+# ==========================================================
+
+def print_json(
+    title,
+    data
+):
+
+    print(
+        "\n" + "-" * 60
+    )
+
+    print(
+        title
+    )
+
+    print(
+        "-" * 60
+    )
+
+    try:
+
+        print(
+            json.dumps(
+                data,
+                indent=4,
+                default=str
+            )
+        )
+
+    except Exception:
+
+        print(
+            data
+        )
 
 
 # ==========================================================
 # STEP 1 - OCR
 # ==========================================================
 
-def run_ocr(document_path):
+def run_ocr(
+    document_path
+):
 
-    print("\n" + "=" * 60)
-    print("STEP 1 - OCR DOCUMENT SCANNING")
-    print("=" * 60)
+    print(
+        "\n" + "=" * 60
+    )
+
+    print(
+        "STEP 1 - OCR DOCUMENT SCANNING"
+    )
+
+    print(
+        "=" * 60
+    )
 
     print(
         f"\n📄 Document: {document_path}"
     )
 
-    # ------------------------------------------------------
-    # Validate document
-    # ------------------------------------------------------
+    # ======================================================
+    # VALIDATE DOCUMENT PATH
+    # ======================================================
 
     if not document_path:
 
         return {
-            "status": "ERROR",
-            "message": "No document was provided."
+
+            "status":
+                "ERROR",
+
+            "message":
+                "No document was provided."
+
         }
 
-    if not os.path.exists(document_path):
+    if not os.path.exists(
+        document_path
+    ):
 
         return {
-            "status": "ERROR",
+
+            "status":
+                "ERROR",
+
             "message":
-                f"Document not found: {document_path}"
+                (
+                    "Document not found: "
+                    f"{document_path}"
+                )
+
         }
 
-    # ------------------------------------------------------
-    # Load OCR
-    # ------------------------------------------------------
+    # ======================================================
+    # LOAD OCR
+    # ======================================================
 
     try:
 
@@ -115,17 +251,29 @@ def run_ocr(document_path):
     except Exception as e:
 
         return {
-            "status": "ERROR",
+
+            "status":
+                "ERROR",
+
             "message":
-                f"OCR model error: {str(e)}"
+                (
+                    "OCR model initialization failed: "
+                    f"{str(e)}"
+                )
+
         }
 
-    # ------------------------------------------------------
-    # Run OCR
-    # ------------------------------------------------------
+    # ======================================================
+    # RUN OCR
+    # ======================================================
 
-    print("\n🔍 Scanning document...")
-    print("Please wait...\n")
+    print(
+        "\n🔍 Scanning document..."
+    )
+
+    print(
+        "Please wait...\n"
+    )
 
     try:
 
@@ -135,15 +283,26 @@ def run_ocr(document_path):
 
     except Exception as e:
 
+        print(
+            f"\n❌ OCR scanning failed: {e}"
+        )
+
         return {
-            "status": "ERROR",
+
+            "status":
+                "ERROR",
+
             "message":
-                f"OCR scanning failed: {str(e)}"
+                (
+                    "OCR scanning failed: "
+                    f"{str(e)}"
+                )
+
         }
 
-    # ------------------------------------------------------
-    # Extract text
-    # ------------------------------------------------------
+    # ======================================================
+    # EXTRACT OCR TEXT
+    # ======================================================
 
     all_texts = []
 
@@ -153,35 +312,53 @@ def run_ocr(document_path):
 
             try:
 
-                if hasattr(res, "json"):
+                if not hasattr(
+                    res,
+                    "json"
+                ):
 
-                    data = res.json
+                    continue
 
-                    if callable(data):
-                        data = data()
+                data = res.json
 
-                    if isinstance(data, dict):
+                # Some PaddleOCR versions expose
+                # json as a method.
+                if callable(data):
 
-                        ocr_data = data.get(
-                            "res",
-                            data
-                        )
+                    data = data()
 
-                        if isinstance(
-                            ocr_data,
-                            dict
-                        ):
+                if not isinstance(
+                    data,
+                    dict
+                ):
 
-                            texts = ocr_data.get(
-                                "rec_texts",
-                                []
-                            )
+                    continue
 
-                            if texts:
+                ocr_data = data.get(
+                    "res",
+                    data
+                )
 
-                                all_texts.extend(
-                                    texts
-                                )
+                if not isinstance(
+                    ocr_data,
+                    dict
+                ):
+
+                    continue
+
+                texts = ocr_data.get(
+                    "rec_texts",
+                    []
+                )
+
+                if isinstance(
+                    texts,
+                    list
+                ):
+
+                    all_texts.extend(
+                        texts
+                    )
 
             except Exception as e:
 
@@ -192,32 +369,52 @@ def run_ocr(document_path):
     except Exception as e:
 
         return {
-            "status": "ERROR",
+
+            "status":
+                "ERROR",
+
             "message":
-                f"OCR result processing failed: {str(e)}"
+                (
+                    "OCR result processing failed: "
+                    f"{str(e)}"
+                )
+
         }
 
-    # ------------------------------------------------------
-    # Display OCR text
-    # ------------------------------------------------------
+    # ======================================================
+    # DISPLAY RAW OCR
+    # ======================================================
 
-    print("-" * 60)
-    print("RAW OCR TEXT")
-    print("-" * 60)
+    print(
+        "\n" + "-" * 60
+    )
+
+    print(
+        "RAW OCR TEXT"
+    )
+
+    print(
+        "-" * 60
+    )
 
     if all_texts:
 
         for text in all_texts:
 
-            print("•", text)
+            print(
+                "•",
+                text
+            )
 
     else:
 
-        print("⚠️ No text detected.")
+        print(
+            "⚠️ No text detected."
+        )
 
-    # ------------------------------------------------------
-    # Structured field extraction
-    # ------------------------------------------------------
+    # ======================================================
+    # STRUCTURED FIELD EXTRACTION
+    # ======================================================
 
     try:
 
@@ -230,43 +427,44 @@ def run_ocr(document_path):
     except Exception as e:
 
         return {
-            "status": "ERROR",
-            "raw_text": all_texts,
+
+            "status":
+                "ERROR",
+
+            "raw_text":
+                all_texts,
+
             "message":
-                f"Field extraction failed: {str(e)}"
+                (
+                    "Field extraction failed: "
+                    f"{str(e)}"
+                )
+
         }
 
-    # ------------------------------------------------------
-    # Display extracted data
-    # ------------------------------------------------------
+    # ======================================================
+    # DISPLAY EXTRACTED DATA
+    # ======================================================
 
-    print("\n" + "-" * 60)
-    print("EXTRACTED DOCUMENT DATA")
-    print("-" * 60)
+    print_json(
+        "EXTRACTED DOCUMENT DATA",
+        document_data
+    )
 
-    try:
-
-        print(
-            json.dumps(
-                document_data,
-                indent=4,
-                default=str
-            )
-        )
-
-    except Exception:
-
-        print(document_data)
-
-    # ------------------------------------------------------
-    # Cleanup
-    # ------------------------------------------------------
+    # ======================================================
+    # CLEANUP
+    # ======================================================
 
     cleanup_memory()
 
+    # ======================================================
+    # RETURN
+    # ======================================================
+
     return {
 
-        "status": "PASS",
+        "status":
+            "PASS",
 
         "raw_text":
             all_texts,
@@ -281,11 +479,21 @@ def run_ocr(document_path):
 # STEP 2 - DOCUMENT VALIDATION
 # ==========================================================
 
-def run_validation(document_data):
+def run_validation(
+    document_data
+):
 
-    print("\n" + "=" * 60)
-    print("STEP 2 - DOCUMENT VALIDATION")
-    print("=" * 60)
+    print(
+        "\n" + "=" * 60
+    )
+
+    print(
+        "STEP 2 - DOCUMENT VALIDATION"
+    )
+
+    print(
+        "=" * 60
+    )
 
     try:
 
@@ -301,34 +509,46 @@ def run_validation(document_data):
 
         result = {
 
-            "status": "ERROR",
+            "status":
+                "ERROR",
 
             "message":
                 str(e)
 
         }
 
-    print(
-        json.dumps(
-            result,
-            indent=4,
-            default=str
-        )
+    # ======================================================
+    # DISPLAY RESULT
+    # ======================================================
+
+    print_json(
+        "DOCUMENT VALIDATION RESULT",
+        result
     )
 
-    if result.get("status") == "PASS":
+    # ======================================================
+    # DECISION
+    # ======================================================
+
+    if result.get(
+        "status"
+    ) == "PASS":
 
         print(
             "\n✅ DOCUMENT VALIDATION PASSED"
         )
 
-    elif result.get("status") == "FLAGGED":
+    elif result.get(
+        "status"
+    ) == "FLAGGED":
 
         print(
             "\n⚠️ DOCUMENT VALIDATION FLAGGED"
         )
 
-    elif result.get("status") == "FAIL":
+    elif result.get(
+        "status"
+    ) == "FAIL":
 
         print(
             "\n❌ DOCUMENT VALIDATION FAILED"
@@ -346,14 +566,24 @@ def run_validation(document_data):
 
 
 # ==========================================================
-# STEP 3 - AUTHENTICITY
+# STEP 3 - AUTHORITY / AUTHENTICITY
 # ==========================================================
 
-def run_authenticity(document_data):
+def run_authenticity(
+    document_data
+):
 
-    print("\n" + "=" * 60)
-    print("STEP 3 - AUTHORITY / AUTHENTICITY VERIFICATION")
-    print("=" * 60)
+    print(
+        "\n" + "=" * 60
+    )
+
+    print(
+        "STEP 3 - AUTHORITY / AUTHENTICITY VERIFICATION"
+    )
+
+    print(
+        "=" * 60
+    )
 
     print(
         "\n🔎 Checking authoritative identity registry..."
@@ -396,33 +626,46 @@ def run_authenticity(document_data):
 
         }
 
-    print(
-        json.dumps(
-            result,
-            indent=4,
-            default=str
-        )
+    # ======================================================
+    # DISPLAY RESULT
+    # ======================================================
+
+    print_json(
+        "AUTHORITY / AUTHENTICITY RESULT",
+        result
     )
 
-    if result.get("status") == "VERIFIED":
+    # ======================================================
+    # DECISION
+    # ======================================================
+
+    if result.get(
+        "status"
+    ) == "VERIFIED":
 
         print(
             "\n✅ AUTHORITATIVE RECORD MATCHED"
         )
 
-    elif result.get("status") == "SUSPICIOUS":
+    elif result.get(
+        "status"
+    ) == "SUSPICIOUS":
 
         print(
             "\n❌ DOCUMENT INFORMATION IS SUSPICIOUS"
         )
 
-    elif result.get("status") == "REVIEW":
+    elif result.get(
+        "status"
+    ) == "REVIEW":
 
         print(
             "\n⚠️ DOCUMENT REQUIRES REVIEW"
         )
 
-    elif result.get("status") == "NOT_FOUND":
+    elif result.get(
+        "status"
+    ) == "NOT_FOUND":
 
         print(
             "\n⚠️ NO AUTHORITATIVE RECORD FOUND"
@@ -440,18 +683,32 @@ def run_authenticity(document_data):
 
 
 # ==========================================================
-# STEP 4 - TAMPERING
+# STEP 4 - DOCUMENT FORENSIC ANALYSIS
 # ==========================================================
 
-def run_tampering(submitted_path):
+def run_tampering(
+    submitted_path
+):
 
-    print("\n" + "=" * 60)
-    print("STEP 4 - DOCUMENT FORENSIC ANALYSIS")
-    print("=" * 60)
+    print(
+        "\n" + "=" * 60
+    )
+
+    print(
+        "STEP 4 - DOCUMENT FORENSIC ANALYSIS"
+    )
+
+    print(
+        "=" * 60
+    )
 
     print(
         f"\nSubmitted document: {submitted_path}"
     )
+
+    # ======================================================
+    # CHECK PATH
+    # ======================================================
 
     if not submitted_path:
 
@@ -485,74 +742,39 @@ def run_tampering(submitted_path):
 
         }
 
-    print(
-        "\n🔍 Running document forensic analysis..."
-    )
+    # ======================================================
+    # HOSTED VERSION
+    # ======================================================
+    #
+    # Heavy forensic models are intentionally disabled
+    # for the current low-memory hosted environment.
+    #
+    # ======================================================
 
     print(
-        "Please wait...\n"
+        "\nℹ️ Forensic analysis disabled on current hosted instance."
     )
 
-    try:
+    result = {
 
-        from tampering.detector import (
-            analyze_document
-        )
+        "status":
+            "NOT_AVAILABLE",
 
-        result = analyze_document(
-            submitted_path
-        )
+        "tampering_score":
+            None,
 
-    except Exception as e:
+        "message":
+            (
+                "Forensic analysis is unavailable "
+                "on the current hosted instance."
+            )
 
-        result = {
+    }
 
-            "status":
-                "ERROR",
-
-            "tampering_score":
-                100,
-
-            "message":
-                str(e)
-
-        }
-
-    print("-" * 60)
-    print("FORENSIC ANALYSIS RESULT")
-    print("-" * 60)
-
-    print(
-        json.dumps(
-            result,
-            indent=4,
-            default=str
-        )
+    print_json(
+        "FORENSIC ANALYSIS RESULT",
+        result
     )
-
-    if result.get("status") == "PASS":
-
-        print(
-            "\n✅ NO OBVIOUS FORENSIC ANOMALIES"
-        )
-
-    elif result.get("status") == "REVIEW":
-
-        print(
-            "\n⚠️ DOCUMENT REQUIRES FORENSIC REVIEW"
-        )
-
-    elif result.get("status") == "FLAGGED":
-
-        print(
-            "\n❌ DOCUMENT FORENSIC CHECK FLAGGED"
-        )
-
-    else:
-
-        print(
-            "\n❌ FORENSIC ANALYSIS ERROR"
-        )
 
     cleanup_memory()
 
@@ -568,13 +790,26 @@ def run_face_verification(
     document_image
 ):
 
-    print("\n" + "=" * 60)
-    print("STEP 5 - FACE VERIFICATION")
-    print("=" * 60)
+    print(
+        "\n" + "=" * 60
+    )
 
-    # ------------------------------------------------------
-    # No selfie
-    # ------------------------------------------------------
+    print(
+        "STEP 5 - FACE VERIFICATION"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    # ======================================================
+    # HOSTED VERSION
+    # ======================================================
+    #
+    # Face verification is intentionally disabled for the
+    # current low-memory hosted environment.
+    #
+    # ======================================================
 
     if not reference_face:
 
@@ -582,177 +817,33 @@ def run_face_verification(
             "\nℹ️ No selfie/reference face provided."
         )
 
-        print(
-            "Face verification will be skipped."
-        )
-
-        return {
-
-            "status":
-                "NOT_AVAILABLE",
-
-            "similarity_score":
-                None,
-
-            "message":
-                "No reference face was provided."
-
-        }
-
-    # ------------------------------------------------------
-    # Check reference
-    # ------------------------------------------------------
-
-    if not os.path.exists(
-        reference_face
-    ):
-
-        return {
-
-            "status":
-                "NOT_AVAILABLE",
-
-            "similarity_score":
-                None,
-
-            "message":
-                "Reference face was not found."
-
-        }
-
-    # ------------------------------------------------------
-    # Check document
-    # ------------------------------------------------------
-
-    if not document_image:
-
-        return {
-
-            "status":
-                "ERROR",
-
-            "similarity_score":
-                None,
-
-            "message":
-                "Document image was not provided."
-
-        }
-
-    if not os.path.exists(
-        document_image
-    ):
-
-        return {
-
-            "status":
-                "ERROR",
-
-            "similarity_score":
-                None,
-
-            "message":
-                (
-                    "Document image not found: "
-                    f"{document_image}"
-                )
-
-        }
-
-    print(
-        f"\nReference face : {reference_face}"
-    )
-
-    print(
-        f"Document image : {document_image}"
-    )
-
-    print(
-        "\n🔄 Running face verification..."
-    )
-
-    print(
-        "Please wait...\n"
-    )
-
-    # ------------------------------------------------------
-    # Lazy import
-    # ------------------------------------------------------
-
-    try:
-
-        from face.verifier import (
-            verify_faces
-        )
-
-        result = verify_faces(
-
-            reference_face,
-
-            document_image
-
-        )
-
-    except Exception as e:
-
-        result = {
-
-            "status":
-                "ERROR",
-
-            "similarity_score":
-                None,
-
-            "message":
-                str(e)
-
-        }
-
-    # ------------------------------------------------------
-    # Display
-    # ------------------------------------------------------
-
-    print("-" * 60)
-    print("FACE VERIFICATION RESULT")
-    print("-" * 60)
-
-    print(
-        json.dumps(
-            result,
-            indent=4,
-            default=str
-        )
-    )
-
-    if result.get("status") == "MATCH":
-
-        print(
-            "\n✅ FACE MATCH"
-        )
-
-    elif result.get("status") == "NO_MATCH":
-
-        print(
-            "\n❌ FACE DOES NOT MATCH"
-        )
-
-    elif result.get("status") == "NO_FACE":
-
-        print(
-            "\n⚠️ NO FACE FOUND"
-        )
-
-    elif result.get("status") == "NOT_AVAILABLE":
-
-        print(
-            "\nℹ️ FACE VERIFICATION NOT AVAILABLE"
-        )
-
     else:
 
         print(
-            "\n⚠️ FACE VERIFICATION ERROR"
+            "\nℹ️ Face verification disabled "
+            "on current hosted instance."
         )
+
+    result = {
+
+        "status":
+            "NOT_AVAILABLE",
+
+        "similarity_score":
+            None,
+
+        "message":
+            (
+                "Face verification is unavailable "
+                "on the current hosted instance."
+            )
+
+    }
+
+    print_json(
+        "FACE VERIFICATION RESULT",
+        result
+    )
 
     cleanup_memory()
 
@@ -770,15 +861,31 @@ def run_risk_engine(
     face_result
 ):
 
-    print("\n" + "=" * 60)
-    print("STEP 6 - RISK ENGINE")
-    print("=" * 60)
+    print(
+        "\n" + "=" * 60
+    )
+
+    print(
+        "STEP 6 - RISK ENGINE"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    # ======================================================
+    # IMPORT RISK ENGINE
+    # ======================================================
 
     try:
 
         from risk_engine.risk_engine import (
             calculate_risk
         )
+
+        # --------------------------------------------------
+        # New risk engine
+        # --------------------------------------------------
 
         try:
 
@@ -794,7 +901,15 @@ def run_risk_engine(
 
             )
 
+        # --------------------------------------------------
+        # Older risk engine compatibility
+        # --------------------------------------------------
+
         except TypeError:
+
+            print(
+                "\nℹ️ Using legacy risk engine signature..."
+            )
 
             result = calculate_risk(
 
@@ -807,6 +922,10 @@ def run_risk_engine(
             )
 
     except Exception as e:
+
+        print(
+            f"\n❌ Risk engine failed: {e}"
+        )
 
         result = {
 
@@ -849,34 +968,80 @@ def run_risk_engine(
 
             "warnings": [
 
-                f"Risk engine error: {str(e)}"
+                (
+                    "Risk engine error: "
+                    f"{str(e)}"
+                )
 
             ]
 
         }
 
-    # ------------------------------------------------------
-    # Expose all results
-    # ------------------------------------------------------
+    # ======================================================
+    # MAKE SURE RESULT IS A DICTIONARY
+    # ======================================================
+
+    if not isinstance(
+        result,
+        dict
+    ):
+
+        result = {
+
+            "risk_score":
+                100,
+
+            "risk_level":
+                "HIGH",
+
+            "decision":
+                "DOCUMENT REJECTED",
+
+            "warnings": [
+
+                "Risk engine returned an invalid result."
+
+            ]
+
+        }
+
+    # ======================================================
+    # ALWAYS EXPOSE AUTHENTICITY
+    # ======================================================
 
     if "authenticity" not in result:
 
-        result["authenticity"] = (
-            authenticity_result
-        )
+        result[
+            "authenticity"
+        ] = authenticity_result
+
+    # ======================================================
+    # ALWAYS EXPOSE TAMPERING
+    # ======================================================
 
     if "tampering" not in result:
 
-        result["tampering"] = (
-            tampering_result
-        )
+        result[
+            "tampering"
+        ] = tampering_result
 
-    print(
-        json.dumps(
-            result,
-            indent=4,
-            default=str
-        )
+    # ======================================================
+    # ALWAYS EXPOSE FACE
+    # ======================================================
+
+    if "face_verification" not in result:
+
+        result[
+            "face_verification"
+        ] = face_result
+
+    # ======================================================
+    # DISPLAY
+    # ======================================================
+
+    print_json(
+        "RISK ENGINE RESULT",
+        result
     )
 
     cleanup_memory()
@@ -888,13 +1053,33 @@ def run_risk_engine(
 # FINAL DECISION DISPLAY
 # ==========================================================
 
-def display_final_decision(result):
+def display_final_decision(
+    result
+):
 
-    print("\n")
-    print("=" * 60)
-    print("             IDSHIELD AI")
-    print("          FINAL DECISION")
-    print("=" * 60)
+    print(
+        "\n"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    print(
+        "             IDSHIELD AI"
+    )
+
+    print(
+        "          FINAL DECISION"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    # ======================================================
+    # BASIC VALUES
+    # ======================================================
 
     decision = result.get(
         "decision",
@@ -912,6 +1097,7 @@ def display_final_decision(result):
     )
 
     print()
+
     print(
         "FINAL DECISION :",
         decision
@@ -927,9 +1113,9 @@ def display_final_decision(result):
         risk_score
     )
 
-    # ------------------------------------------------------
-    # Authenticity
-    # ------------------------------------------------------
+    # ======================================================
+    # AUTHENTICITY
+    # ======================================================
 
     authenticity = result.get(
         "authenticity",
@@ -937,6 +1123,7 @@ def display_final_decision(result):
     )
 
     print()
+
     print(
         "AUTHORITY STATUS:",
         authenticity.get(
@@ -968,9 +1155,9 @@ def display_final_decision(result):
             "%"
         )
 
-    # ------------------------------------------------------
-    # Tampering
-    # ------------------------------------------------------
+    # ======================================================
+    # FORENSIC
+    # ======================================================
 
     tampering = result.get(
         "tampering",
@@ -998,9 +1185,39 @@ def display_final_decision(result):
             )
         )
 
-    # ------------------------------------------------------
-    # Final message
-    # ------------------------------------------------------
+    # ======================================================
+    # FACE
+    # ======================================================
+
+    face = result.get(
+        "face_verification",
+        {}
+    )
+
+    print()
+
+    print(
+        "FACE STATUS      :",
+        face.get(
+            "status",
+            "UNKNOWN"
+        )
+    )
+
+    if face.get(
+        "similarity_score"
+    ) is not None:
+
+        print(
+            "FACE SIMILARITY  :",
+            face.get(
+                "similarity_score"
+            )
+        )
+
+    # ======================================================
+    # FINAL MESSAGE
+    # ======================================================
 
     print()
 
@@ -1022,9 +1239,9 @@ def display_final_decision(result):
             "⚠️ DOCUMENT REQUIRES REVIEW"
         )
 
-    # ------------------------------------------------------
-    # Warnings
-    # ------------------------------------------------------
+    # ======================================================
+    # WARNINGS
+    # ======================================================
 
     warnings = result.get(
         "warnings",
@@ -1034,9 +1251,18 @@ def display_final_decision(result):
     if warnings:
 
         print()
-        print("-" * 60)
-        print("WARNINGS")
-        print("-" * 60)
+
+        print(
+            "-" * 60
+        )
+
+        print(
+            "WARNINGS"
+        )
+
+        print(
+            "-" * 60
+        )
 
         for warning in warnings:
 
@@ -1046,42 +1272,127 @@ def display_final_decision(result):
             )
 
     print()
-    print("=" * 60)
+
+    print(
+        "=" * 60
+    )
 
 
 # ==========================================================
 # COMPLETE PIPELINE
 # ==========================================================
+
 def run_pipeline(
     document_path,
     reference_face_path=None
 ):
 
-    print("\n")
-    print("=" * 60)
-    print("       IDSHIELD AI - HOSTED PIPELINE")
-    print("=" * 60)
+    print(
+        "\n"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    print(
+        "       IDSHIELD AI - HOSTED PIPELINE"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    # ======================================================
+    # VALIDATE DOCUMENT
+    # ======================================================
+
+    if not document_path:
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "stage":
+                "INPUT",
+
+            "message":
+                "No document was provided."
+
+        }
+
+    if not os.path.exists(
+        document_path
+    ):
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "stage":
+                "INPUT",
+
+            "message":
+                (
+                    "Document not found: "
+                    f"{document_path}"
+                )
+
+        }
 
     # ======================================================
     # STEP 1 - OCR
     # ======================================================
 
-    print("\n🚀 STARTING OCR")
+    print(
+        "\n🚀 STARTING OCR"
+    )
 
     ocr_result = run_ocr(
         document_path
     )
 
-    if ocr_result.get("status") == "ERROR":
+    if ocr_result.get(
+        "status"
+    ) == "ERROR":
 
-        return {
-            "status": "ERROR",
-            "stage": "OCR",
-            "message": ocr_result.get(
+        print(
+            "\n❌ PIPELINE STOPPED AT OCR"
+        )
+
+        print(
+            ocr_result.get(
                 "message",
                 "OCR error"
             )
+        )
+
+        cleanup_memory()
+
+        return {
+
+            "status":
+                "ERROR",
+
+            "stage":
+                "OCR",
+
+            "message":
+                ocr_result.get(
+                    "message",
+                    "OCR error"
+                ),
+
+            "ocr":
+                ocr_result
+
         }
+
+    # ======================================================
+    # DOCUMENT DATA
+    # ======================================================
 
     document_data = ocr_result.get(
         "document_data",
@@ -1092,7 +1403,9 @@ def run_pipeline(
     # STEP 2 - VALIDATION
     # ======================================================
 
-    print("\n🚀 STARTING VALIDATION")
+    print(
+        "\n🚀 STARTING VALIDATION"
+    )
 
     validation_result = run_validation(
         document_data
@@ -1102,37 +1415,49 @@ def run_pipeline(
     # STEP 3 - AUTHENTICITY
     # ======================================================
 
-    print("\n🚀 STARTING AUTHENTICITY")
+    print(
+        "\n🚀 STARTING AUTHENTICITY"
+    )
 
     authenticity_result = run_authenticity(
         document_data
     )
 
     # ======================================================
-    # SKIP HEAVY AI ON RENDER
+    # STEP 4 - FORENSIC ANALYSIS
     # ======================================================
 
-    print("\nℹ️ Heavy AI modules disabled on Render")
+    print(
+        "\n🚀 STARTING FORENSIC ANALYSIS"
+    )
 
-    tampering_result = {
-        "status": "NOT_AVAILABLE",
-        "tampering_score": None,
-        "message":
-            "Forensic analysis is unavailable on the hosted free instance."
-    }
-
-    face_result = {
-        "status": "NOT_AVAILABLE",
-        "similarity_score": None,
-        "message":
-            "Face verification is unavailable on the hosted free instance."
-    }
+    tampering_result = run_tampering(
+        document_path
+    )
 
     # ======================================================
-    # RISK ENGINE
+    # STEP 5 - FACE VERIFICATION
     # ======================================================
 
-    print("\n🚀 STARTING RISK ENGINE")
+    print(
+        "\n🚀 STARTING FACE VERIFICATION"
+    )
+
+    face_result = run_face_verification(
+
+        reference_face_path,
+
+        document_path
+
+    )
+
+    # ======================================================
+    # STEP 6 - RISK ENGINE
+    # ======================================================
+
+    print(
+        "\n🚀 STARTING RISK ENGINE"
+    )
 
     risk_result = run_risk_engine(
 
@@ -1155,14 +1480,22 @@ def run_pipeline(
     )
 
     # ======================================================
-    # RETURN
+    # CLEANUP
     # ======================================================
 
-    return {
+    cleanup_memory()
 
-        "status": "COMPLETED",
+    # ======================================================
+    # COMPLETE RESULT
+    # ======================================================
 
-        "ocr": ocr_result,
+    final_result = {
+
+        "status":
+            "COMPLETED",
+
+        "ocr":
+            ocr_result,
 
         "validation":
             validation_result,
@@ -1181,12 +1514,38 @@ def run_pipeline(
 
     }
 
+    print(
+        "\n✅ IDShield AI pipeline completed."
+    )
+
+    return final_result
+
 
 # ==========================================================
 # LOCAL TEST
 # ==========================================================
 
 if __name__ == "__main__":
+
+    print(
+        "\n"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    print(
+        "IDSHIELD AI - LOCAL PIPELINE TEST"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    # ======================================================
+    # TEST DOCUMENT
+    # ======================================================
 
     DOCUMENT = os.path.join(
 
@@ -1200,6 +1559,10 @@ if __name__ == "__main__":
 
     )
 
+    # ======================================================
+    # TEST REFERENCE FACE
+    # ======================================================
+
     REFERENCE_FACE = os.path.join(
 
         BASE_DIR,
@@ -1211,6 +1574,10 @@ if __name__ == "__main__":
         "person1.jpg"
 
     )
+
+    # ======================================================
+    # DISPLAY FILES
+    # ======================================================
 
     print(
         "\nChecking test files...\n"
@@ -1226,6 +1593,10 @@ if __name__ == "__main__":
         REFERENCE_FACE
     )
 
+    # ======================================================
+    # DOCUMENT CHECK
+    # ======================================================
+
     if not os.path.exists(
         DOCUMENT
     ):
@@ -1234,7 +1605,15 @@ if __name__ == "__main__":
             "\n❌ Document file not found!"
         )
 
+        print(
+            DOCUMENT
+        )
+
         sys.exit(1)
+
+    # ======================================================
+    # REFERENCE FACE CHECK
+    # ======================================================
 
     if not os.path.exists(
         REFERENCE_FACE
@@ -1244,7 +1623,15 @@ if __name__ == "__main__":
             "\n⚠️ Reference face not found."
         )
 
+        print(
+            "Face verification will be skipped."
+        )
+
         REFERENCE_FACE = None
+
+    # ======================================================
+    # RUN PIPELINE
+    # ======================================================
 
     final_result = run_pipeline(
 
@@ -1254,10 +1641,25 @@ if __name__ == "__main__":
 
     )
 
-    print("\n")
-    print("=" * 60)
-    print("       IDSHIELD AI - PIPELINE COMPLETED")
-    print("=" * 60)
+    # ======================================================
+    # COMPLETED
+    # ======================================================
+
+    print(
+        "\n"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    print(
+        "       IDSHIELD AI - PIPELINE COMPLETED"
+    )
+
+    print(
+        "=" * 60
+    )
 
     if isinstance(
         final_result,
@@ -1272,10 +1674,28 @@ if __name__ == "__main__":
                 "\n❌ Pipeline completed with an error."
             )
 
+            print(
+                "Stage:",
+                final_result.get(
+                    "stage",
+                    "UNKNOWN"
+                )
+            )
+
+            print(
+                "Message:",
+                final_result.get(
+                    "message",
+                    "Unknown error"
+                )
+            )
+
         else:
 
             print(
                 "\n✅ Pipeline result generated successfully."
             )
 
-    print("=" * 60)
+    print(
+        "=" * 60
+    )
